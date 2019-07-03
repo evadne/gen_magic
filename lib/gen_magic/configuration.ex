@@ -8,8 +8,8 @@ defmodule GenMagic.Configuration do
   def get_worker_command do
     database_paths = get_database_paths()
     worker_path = Path.join(:code.priv_dir(@otp_app), get_worker_name())
-    worker_arguments = Enum.map(database_paths, &("--file " <> &1))
-    Enum.join([worker_path | worker_arguments], " ")
+    worker_arguments = Enum.flat_map(database_paths, &["--file", &1])
+    {worker_path, worker_arguments}
   end
 
   def get_worker_name do

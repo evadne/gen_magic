@@ -6,8 +6,10 @@ config :gen_magic,
   worker_name: "apprentice",
   worker_timeout: 5000,
   recycle_threshold: 10,
-  database_patterns: [
-    "/usr/local/share/misc/magic.mgc",
-    "/usr/share/file/magic.mgc",
-    "/usr/share/misc/magic.mgc"
-  ]
+  database_patterns:
+    [
+      "/usr/local/share/misc/magic.mgc",
+      "/usr/share/file/magic.mgc",
+      "/usr/share/misc/magic.mgc"
+    ]
+    |> Enum.filter(&File.exists?/1)

@@ -20,9 +20,7 @@ defmodule GenMagic.MixProject do
 
   defp deps do
     [
-      {:elixir_make, "~> 0.4", runtime: false},
-      {:exexec, "~> 0.2.0"},
-      {:erlexec, "~> 1.10.0"}
+      {:elixir_make, "~> 0.4", runtime: false}
     ]
   end
 end

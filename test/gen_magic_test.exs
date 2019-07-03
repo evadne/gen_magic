@@ -13,7 +13,7 @@ defmodule GenMagicTest do
     path = File.cwd!() |> Path.join("Makefile")
 
     assert {:ok, [mime_type: "text/x-makefile", encoding: _, content: _]} =
-             GenServer.call(pid, {:perform, path})
+             GenServer.call(pid, {:file, path})
   end
 
   @tag load: true, timeout: 180_000
@@ -26,10 +26,9 @@ defmodule GenMagicTest do
     |> Stream.cycle()
     |> Stream.take(10000)
     |> Stream.map(
-      &assert {:ok, [mime_type: _, encoding: _, content: _]} = GenServer.call(pid, {:perform, &1})
+      &assert {:ok, [mime_type: _, encoding: _, content: _]} = GenServer.call(pid, {:file, &1})
     )
     |> Enum.all?()
     |> assert
   end
-
 end
