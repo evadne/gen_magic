@@ -3,12 +3,12 @@ defmodule GenMagic.Configuration do
   Convenience module which returns information from configuration.
   """
 
-  @otp_app Mix.Project.config[:app]
+  @otp_app Mix.Project.config()[:app]
 
   def get_worker_command do
     database_paths = get_database_paths()
     worker_path = Path.join(:code.priv_dir(@otp_app), get_worker_name())
-    worker_arguments = Enum.map(database_paths, & "--file " <> &1)
+    worker_arguments = Enum.map(database_paths, &("--file " <> &1))
     Enum.join([worker_path | worker_arguments], " ")
   end
 
@@ -19,7 +19,7 @@ defmodule GenMagic.Configuration do
   def get_worker_timeout do
     get_env(:worker_timeout)
   end
-  
+
   def get_recycle_threshold do
     get_env(:recycle_threshold)
   end

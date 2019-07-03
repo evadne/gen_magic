@@ -31,8 +31,10 @@ defmodule GenMagic.ApprenticeServer do
     case {run(path, state), state.count + 1} do
       {{:error, :worker_failure} = reply, _} ->
         {:reply, reply, stop(state)}
+
       {reply, ^max_count} ->
         {:reply, reply, stop(state)}
+
       {reply, count} ->
         {:reply, reply, %{state | count: count}}
     end
@@ -55,8 +57,9 @@ defmodule GenMagic.ApprenticeServer do
     receive do
       {:stdout, ^ospid, "ok\n"} -> {:ok, state}
       {:stdout, ^ospid, "ok\r\n"} -> {:ok, state}
-    after worker_timeout ->
-      {:error, :worker_failure}
+    after
+      worker_timeout ->
+        {:error, :worker_failure}
     end
   end
 
@@ -72,15 +75,19 @@ defmodule GenMagic.ApprenticeServer do
     receive do
       {stream, ^ospid, message} ->
         handle_response(stream, message)
-    after worker_timeout ->
-      {:error, :worker_failure}
+    after
+      worker_timeout ->
+        {:error, :worker_failure}
     end
   end
 
   defp handle_response(:stdout, "ok; " <> message) do
-    case message |> String.trim |> String.split("\t") do
-      [mime_type, encoding, content] -> {:ok, [mime_type: mime_type, encoding: encoding, content: content]}
-      _ -> {:error, :malformed_response}
+    case message |> String.trim() |> String.split("\t") do
+      [mime_type, encoding, content] ->
+        {:ok, [mime_type: mime_type, encoding: encoding, content: content]}
+
+      _ ->
+        {:error, :malformed_response}
     end
   end
 
@@ -96,5 +103,4 @@ defmodule GenMagic.ApprenticeServer do
   #     (stdlib) gen_server.erl:711: :gen_server.handle_msg/6
   #     (stdlib) proc_lib.erl:249: :proc_lib.init_p_do_apply/3
   # Last message: {:stderr, 12304, "\n"}
-
 end
