@@ -61,7 +61,7 @@ defmodule GenMagic.ApprenticeServer do
         {:stop, :shutdown, {:error, :malformed}, port}
     after
       worker_timeout ->
-        {:error, :worker_failure}
+        {:stop, :shutdown, {:error, :worker_failure}, port}
     end
   end
 
@@ -73,6 +73,23 @@ defmodule GenMagic.ApprenticeServer do
       _ ->
         {:error, :malformed_response}
     end
+  end
+
+  def terminate(_reason, port) do
+    case send(port, {self(), :close}) do
+      {_, :close} -> :ok
+      _ -> :ok
+    end
+  end
+
+  def handle_info({_, {:exit_status, 1}}, port) do
+    {:stop, :shutdown, port}
+  end
+
+  # Server is overloaded - late replies
+  # Normally caused only when previous call errors
+  def handle_info({_, {:data, _}}, port) do
+    {:stop, :shutdown, port}
   end
 
   # def handle_call({:perform, path}, _, state) do
@@ -117,23 +134,6 @@ defmodule GenMagic.ApprenticeServer do
   #   :normal = Exexec.stop_and_wait(state.ospid)
   #   %State{}
   # end
-
-  def terminate(_reason, port) do
-    case send(port, {self(), :close}) do
-      {_, :close} -> :ok
-      _ -> :ok
-    end
-  end
-
-  def handle_info({_, {:exit_status, 1}}, port) do
-    {:stop, :shutdown, port}
-  end
-
-  # Server is overloaded - late replies
-  # Normally caused only when previous call errors
-  def handle_info({_, {:data, _}}, port) do
-    {:stop, :shutdown, port}
-  end
 
   # defp run(path, %{pid: pid, ospid: ospid} = _state) do
   #   worker_timeout = Configuration.get_worker_timeout()

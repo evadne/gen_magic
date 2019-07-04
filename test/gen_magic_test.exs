@@ -52,7 +52,6 @@ defmodule GenMagicTest do
     |> assert
   end
 
-
   defp missing_filename do
     f =
       make_ref()
