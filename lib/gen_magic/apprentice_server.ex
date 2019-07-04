@@ -23,7 +23,9 @@ defmodule GenMagic.ApprenticeServer do
             :exit_status,
             args: worker_arguments
           ])
-          {:ok, port, {:continue, :verify_port}}
+
+        {:ok, port, {:continue, :verify_port}}
+
       {:error, _} = e ->
         {:stop, e}
     end
@@ -42,7 +44,6 @@ defmodule GenMagic.ApprenticeServer do
     end
   end
 
-
   def handle_call({:file, path}, _from, port) do
     cmd = "file; " <> path <> "\n"
     send(port, {self(), {:command, cmd}})
@@ -58,7 +59,6 @@ defmodule GenMagic.ApprenticeServer do
 
       {_, {:data, _}} ->
         {:stop, :shutdown, {:error, :malformed}, port}
-
     after
       worker_timeout ->
         {:error, :worker_failure}
@@ -74,8 +74,6 @@ defmodule GenMagic.ApprenticeServer do
         {:error, :malformed_response}
     end
   end
-
-
 
   # def handle_call({:perform, path}, _, state) do
   #   max_count = Configuration.get_recycle_threshold()
@@ -143,7 +141,6 @@ defmodule GenMagic.ApprenticeServer do
   #       {:error, :worker_failure}
   #   end
   # end
-
 
   # TODO handle late responses under load
   # 17:13:47.808 [error] GenServer #PID<0.199.0> terminating

@@ -15,13 +15,13 @@ defmodule GenMagic do
     result
   end
 
-  def perform_infinite(path) do
-    {:ok, pid} = __MODULE__.ApprenticeServer.start_link()
-    perform_infinite(path, pid)
-  end
+  # def perform_infinite(path) do
+  #   {:ok, pid} = __MODULE__.ApprenticeServer.start_link()
+  #   perform_infinite(path, pid)
+  # end
 
-  defp perform_infinite(path, pid, count \\ 0) do
-    IO.inspect([count, GenServer.call(pid, {:perform, path})])
-    perform_infinite(path, pid, count + 1)
-  end
+  # defp perform_infinite(path, pid, count \\ 0) do
+  #   IO.inspect([count, GenServer.call(pid, {:perform, path})])
+  #   perform_infinite(path, pid, count + 1)
+  # end
 end
