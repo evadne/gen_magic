@@ -6,12 +6,9 @@ defmodule GenMagicTest do
 
   @iterations 10_000
 
-  setup_all do
-    {:ok, pid} = Magic.start_link()
-    {:ok, %{pid: pid}}
-  end
 
-  test "Makefile is text file", %{pid: pid} do
+  test "Makefile is text file" do
+    {:ok, pid} = Magic.start_link()
     path = File.cwd!() |> Path.join("Makefile")
 
     assert {:ok, [mime_type: "text/x-makefile", encoding: _, content: _]} =
@@ -19,7 +16,8 @@ defmodule GenMagicTest do
   end
 
   @tag load: true, timeout: 180_000
-  test "Load test local files", %{pid: pid} do
+  test "Load test local files" do
+    {:ok, pid} = Magic.start_link()
     files_stream()
     |> Stream.cycle()
     |> Stream.take(@iterations)
@@ -30,14 +28,16 @@ defmodule GenMagicTest do
     |> assert
   end
 
-  test "Non-existent file", %{pid: pid} do
+  test "Non-existent file" do
+    {:ok, pid} = Magic.start_link()
     path = missing_filename()
 
     assert {:error, "no_file"} = GenServer.call(pid, {:file, path})
   end
 
-  @tag load: true, timeout: 180_000
-  test "Load test local files and missing files", %{pid: pid} do
+  @tag breaking: true, timeout: 180_000
+  test "Load test local files and missing files" do
+    {:ok, pid} = Magic.start_link()
     files_stream()
     |> Stream.intersperse(missing_filename())
     |> Stream.cycle()
