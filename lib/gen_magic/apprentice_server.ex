@@ -10,10 +10,6 @@ defmodule GenMagic.ApprenticeServer do
     GenServer.start_link(__MODULE__, args)
   end
 
-  defmodule State do
-    defstruct pid: nil, ospid: nil, started: false, count: 0
-  end
-
   def init(_) do
     {worker_path, worker_arguments} = Configuration.get_worker_command()
     # worker_options = [stdin: true, stdout: true, stderr: true, monitor: true]
@@ -27,19 +23,25 @@ defmodule GenMagic.ApprenticeServer do
             :exit_status,
             args: worker_arguments
           ])
-
-        receive do
-          {_, {:data, "ok\n"}} ->
-            {:ok, port}
-        after
-          1_000 ->
-            {:stop, :shutdown}
-        end
-
+          {:ok, port, {:continue, :verify_port}}
       {:error, _} = e ->
         {:stop, e}
     end
   end
+
+  # The process sends us an ack when it has read the databases
+  # and is ready to receive data.
+  # OTP-13019 Requires OTP 21
+  def handle_continue(:verify_port, port) do
+    receive do
+      {_, {:data, "ok\n"}} ->
+        {:noreply, port}
+    after
+      10_000 ->
+        {:stop, :nok, port}
+    end
+  end
+
 
   def handle_call({:file, path}, _from, port) do
     cmd = "file; " <> path <> "\n"
@@ -48,23 +50,32 @@ defmodule GenMagic.ApprenticeServer do
     worker_timeout = Configuration.get_worker_timeout()
 
     receive do
-      {_, {:data, message}} ->
-        case handle_response(:stdin, message) do
-          {:ok, response} -> {:reply, response, port}
-          other -> {:reply, other, port}
-        end
+      {_, {:data, "ok; " <> message}} ->
+        {:reply, parse_response(message), port}
+
+      {_, {:data, "error; " <> message}} ->
+        {:reply, {:error, String.trim(message)}, port}
+
+      {_, {:data, _}} ->
+        {:stop, :shutdown, {:error, :malformed}, port}
+
     after
       worker_timeout ->
         {:error, :worker_failure}
     end
   end
 
-  # def handle_call(message, from, %{started: false} = state) do
-  #   case start(state) do
-  #     {:ok, state} -> handle_call(message, from, state)
-  #     {:error, _} = error -> {:reply, error, state}
-  #   end
-  # end
+  defp parse_response(message) do
+    case message |> String.trim() |> String.split("\t") do
+      [mime_type, encoding, content] ->
+        {:ok, [mime_type: mime_type, encoding: encoding, content: content]}
+
+      _ ->
+        {:error, :malformed_response}
+    end
+  end
+
+
 
   # def handle_call({:perform, path}, _, state) do
   #   max_count = Configuration.get_recycle_threshold()
@@ -120,10 +131,6 @@ defmodule GenMagic.ApprenticeServer do
     {:stop, :shutdown, port}
   end
 
-  def handle_info({_, {:data, "ok\n"}}, port) do
-    {:noreply, port}
-  end
-
   # defp run(path, %{pid: pid, ospid: ospid} = _state) do
   #   worker_timeout = Configuration.get_worker_timeout()
   #   :ok = Exexec.send(pid, "file; " <> path <> "\n")
@@ -137,19 +144,6 @@ defmodule GenMagic.ApprenticeServer do
   #   end
   # end
 
-  defp handle_response(:stdin, "ok; " <> message) do
-    case message |> String.trim() |> String.split("\t") do
-      [mime_type, encoding, content] ->
-        {:ok, {:ok, [mime_type: mime_type, encoding: encoding, content: content]}}
-
-      _ ->
-        {:error, :malformed_response}
-    end
-  end
-
-  # defp handle_response(:stderr, "error; " <> message) do
-  #   {:error, String.trim(message)}
-  # end
 
   # TODO handle late responses under load
   # 17:13:47.808 [error] GenServer #PID<0.199.0> terminating
