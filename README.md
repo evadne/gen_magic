@@ -19,3 +19,10 @@ Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_do
 and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
 be found at [https://hexdocs.pm/gen_magic](https://hexdocs.pm/gen_magic).
 
+
+## Load test
+
+Run an endless cycle:
+
+    find /usr/share/ -name *png | xargs mix run test/infinite.exs
+
