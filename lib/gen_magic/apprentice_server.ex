@@ -129,6 +129,12 @@ defmodule GenMagic.ApprenticeServer do
     {:stop, :shutdown, port}
   end
 
+  # Server is overloaded - late replies
+  # Normally caused only when previous call errors
+  def handle_info({_, {:data, _}}, port) do
+    {:stop, :shutdown, port}
+  end
+
   # defp run(path, %{pid: pid, ospid: ospid} = _state) do
   #   worker_timeout = Configuration.get_worker_timeout()
   #   :ok = Exexec.send(pid, "file; " <> path <> "\n")
