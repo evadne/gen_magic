@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -std=c99 -g -Wall
+CFLAGS = -std=c99 -g -Wall -Werror
 LDFLAGS = -lm -lmagic
 HEADER_FILES = src
 C_SOURCE_FILES = src/apprentice.c
