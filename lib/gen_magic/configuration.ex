@@ -5,8 +5,8 @@ defmodule GenMagic.Configuration do
 
   @otp_app Mix.Project.config()[:app]
 
-  def get_worker_command do
-    database_paths = get_database_paths()
+  def get_worker_command(patterns) do
+    database_paths = paths(patterns)
     worker_path = Path.join(:code.priv_dir(@otp_app), get_worker_name())
     worker_arguments = Enum.flat_map(database_paths, &["--file", &1])
     {worker_path, worker_arguments}
@@ -24,11 +24,18 @@ defmodule GenMagic.Configuration do
     get_env(:recycle_threshold)
   end
 
-  def get_database_paths do
-    get_env(:database_patterns) |> Enum.flat_map(&Path.wildcard/1)
+  def get_database_patterns do
+    case get_env(:database_patterns) do
+      nil -> []
+      l when is_list(l) -> l
+      s when is_binary(s) -> [s]
+    end
   end
 
   defp get_env(key) do
     Application.get_env(@otp_app, key)
   end
+
+  defp paths(patterns),
+    do: patterns |> Enum.flat_map(&Path.wildcard/1) |> Enum.filter(&File.exists?/1)
 end

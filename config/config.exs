@@ -12,4 +12,4 @@ config :gen_magic,
       "/usr/share/file/magic.mgc",
       "/usr/share/misc/magic.mgc"
     ]
-    |> Enum.filter(&File.exists?/1)
+    |> Enum.find(&File.exists?/1)

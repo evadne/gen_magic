@@ -6,7 +6,6 @@ defmodule GenMagicTest do
 
   @iterations 10_000
 
-
   test "Makefile is text file" do
     {:ok, pid} = Magic.start_link()
     path = File.cwd!() |> Path.join("Makefile")
@@ -18,6 +17,7 @@ defmodule GenMagicTest do
   @tag load: true, timeout: 180_000
   test "Load test local files" do
     {:ok, pid} = Magic.start_link()
+
     files_stream()
     |> Stream.cycle()
     |> Stream.take(@iterations)
@@ -38,6 +38,7 @@ defmodule GenMagicTest do
   @tag breaking: true, timeout: 180_000
   test "Load test local files and missing files" do
     {:ok, pid} = Magic.start_link()
+
     files_stream()
     |> Stream.intersperse(missing_filename())
     |> Stream.cycle()

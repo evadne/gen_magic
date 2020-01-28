@@ -8,7 +8,9 @@ defmodule Infinite do
   def perform_infinite([]), do: false
 
   def perform_infinite(paths) do
-    {:ok, pid} = GenMagic.ApprenticeServer.start_link()
+    {:ok, pid} =
+      GenMagic.ApprenticeServer.start_link(database_patterns: ["/usr/local/share/misc/*.mgc"])
+
     perform_infinite(paths, [], pid, 0)
   end
 
@@ -17,11 +19,9 @@ defmodule Infinite do
   end
 
   defp perform_infinite([path | paths], done, pid, count) do
-    if rem(count, 1000) == 0 do
-      IO.puts(Integer.to_string(count))
-    end
+    if rem(count, 1000) == 0, do: IO.puts(Integer.to_string(count))
 
-    {:ok, r} = GenServer.call(pid, {:file, path})
+    {:ok, [mime_type: _, encoding: _, content: _]} = GenServer.call(pid, {:file, path})
     perform_infinite(paths, [path | done], pid, count + 1)
   end
 end

@@ -6,12 +6,17 @@ defmodule GenMagic.ApprenticeServer do
   alias GenMagic.Configuration
   use GenServer
 
-  def start_link(args \\ []) do
+  def start_link() do
+    database_patterns = Configuration.get_database_patterns()
+    GenServer.start_link(__MODULE__, database_patterns: database_patterns)
+  end
+
+  def start_link([database_patterns: _] = args) do
     GenServer.start_link(__MODULE__, args)
   end
 
-  def init(_) do
-    {worker_path, worker_arguments} = Configuration.get_worker_command()
+  def init(database_patterns: database_patterns) do
+    {worker_path, worker_arguments} = Configuration.get_worker_command(database_patterns)
     # worker_options = [stdin: true, stdout: true, stderr: true, monitor: true]
     # worker_timeout = Configuration.get_worker_timeout()
     case File.stat(worker_path) do
