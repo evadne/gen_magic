@@ -15,4 +15,4 @@ before_script:
   - if [[ "$TRAVIS_ELIXIR_VERSION" =~ "1.10" ]]; then mix format mix.exs "{config,clients,games,lib,test}/**/*.{ex,exs}" --check-formatted; fi
 
 before_install:
-  - sudo apt-get install -y build-essentials erlang-dev
+  - sudo apt-get install -y build-essential erlang-dev
