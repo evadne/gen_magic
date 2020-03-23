@@ -1,6 +1,8 @@
 defmodule GenMagic.ApprenticeServer do
   @moduledoc """
   Provides access to the underlying libMagic client which performs file introspection.
+
+  NB If you give a non-existent file, the server will terminate, and you will need to restart another.
   """
 
   alias GenMagic.Configuration
