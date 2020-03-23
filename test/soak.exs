@@ -1,8 +1,8 @@
-defmodule Infinite do
+defmodule Soak do
   @moduledoc """
   Run with a list of files to inspect:
 
-      find /usr/share/ -name *png | xargs mix run test/infinite.exs
+      find /usr/share/ -name *png | xargs mix run test/soak.exs
   """
 
   def perform_infinite([]), do: false
@@ -28,8 +28,8 @@ end
 
 # Run with a list of files to inspect
 #
-#  find /usr/share/ -name *png | xargs mix run test/infinite.exs
+#  find /usr/share/ -name *png | xargs mix run test/soak.exs
 
 System.argv()
 |> Enum.filter(&File.exists?/1)
-|> Infinite.perform_infinite()
+|> Soak.perform_infinite()

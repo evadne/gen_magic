@@ -4,8 +4,6 @@ Elixir bindings for [libmagic](http://man7.org/linux/man-pages/man3/libmagic.3.h
 
 [![Build Status](https://travis-ci.org/devstopfix/gen_magic.svg?branch=release_v1)](https://travis-ci.org/devstopfix/gen_magic)
 
-**TODO: Add description**
-
 ## Installation
 
 If [available in Hex](https://hex.pm/docs/publish), the package can be installed
@@ -24,9 +22,9 @@ and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
 be found at [https://hexdocs.pm/gen_magic](https://hexdocs.pm/gen_magic).
 
 
-## Load test
+## Soak test
 
-Run an endless cycle:
+Run an endless cycle to prove that the GenServer is resilient:
 
-    find /usr/share/ -name *png | xargs mix run test/infinite.exs
-
+    find /usr/share/ -name *png | xargs mix run test/soak.exs
+    find . -name *ex | xargs mix run test/soak.exs
