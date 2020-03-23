@@ -35,6 +35,18 @@ defmodule GenMagicTest do
     assert {:error, "no_file"} = GenServer.call(pid, {:file, path})
   end
 
+  test "Several non-existent files" do
+    {:ok, pid} = Magic.start_link()
+
+    paths = Stream.repeatedly(&missing_filename/0) |> Stream.take(3)
+
+    assert Enum.all?(paths, fn path ->
+             assert {:error, "no_file"} = GenServer.call(pid, {:file, path})
+           end)
+
+    assert Process.alive?(pid)
+  end
+
   @tag breaking: true, timeout: 180_000
   test "Load test local files and missing files" do
     {:ok, pid} = Magic.start_link()
