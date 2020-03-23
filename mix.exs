@@ -4,7 +4,7 @@ defmodule GenMagic.MixProject do
   def project do
     [
       app: :gen_magic,
-      version: "0.1.1",
+      version: "0.20.83",
       elixir: "~> 1.6",
       start_permanent: Mix.env() == :prod,
       compilers: [:elixir_make] ++ Mix.compilers(),
@@ -20,7 +20,7 @@ defmodule GenMagic.MixProject do
 
   defp deps do
     [
-      {:credo, "~> 1.1", only: [:dev, :test], runtime: false},
+      {:credo, "~> 1.3", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.0.0-rc.6", only: [:dev], runtime: false},
       {:elixir_make, "~> 0.4", runtime: false}
     ]
