@@ -32,7 +32,7 @@ defmodule GenMagicTest do
     {:ok, pid} = Magic.start_link()
     path = missing_filename()
 
-    assert {:error, "no_file"} = GenServer.call(pid, {:file, path})
+    assert_no_file(GenServer.call(pid, {:file, path}))
   end
 
   test "Several non-existent files" do
@@ -41,7 +41,7 @@ defmodule GenMagicTest do
     paths = Stream.repeatedly(&missing_filename/0) |> Stream.take(3)
 
     assert Enum.all?(paths, fn path ->
-             assert {:error, "no_file"} = GenServer.call(pid, {:file, path})
+             assert_no_file(GenServer.call(pid, {:file, path}))
            end)
 
     assert Process.alive?(pid)
@@ -82,7 +82,7 @@ defmodule GenMagicTest do
       |> Stream.chunk_every(500)
       |> Stream.flat_map(&Enum.shuffle/1)
 
-  # defp missing_files_stream,
-  #   do:
-  #     Stream.repeatedly(&missing_filename/0)
+  defp assert_no_file({:error, msg}) do
+    assert msg == "no_file" || msg == "", msg
+  end
 end
