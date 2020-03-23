@@ -8,13 +8,22 @@ defmodule GenMagic.ApprenticeServer do
   alias GenMagic.Configuration
   use GenServer
 
-  def start_link do
+  def start_link([]) do
     database_patterns = Configuration.get_database_patterns()
     GenServer.start_link(__MODULE__, database_patterns: database_patterns)
   end
 
+  def start_link(name: name) do
+    database_patterns = Configuration.get_database_patterns()
+    GenServer.start_link(__MODULE__, [database_patterns: database_patterns], name: name)
+  end
+
   def start_link([database_patterns: _] = args) do
     GenServer.start_link(__MODULE__, args)
+  end
+
+  def start_link(database_patterns: database_patterns, name: name) do
+    GenServer.start_link(__MODULE__, [database_patterns: database_patterns], name: name)
   end
 
   def init(database_patterns: database_patterns) do

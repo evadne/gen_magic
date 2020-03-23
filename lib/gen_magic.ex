@@ -9,7 +9,7 @@ defmodule GenMagic do
   that uses the library.
   """
   def perform(path) do
-    {:ok, pid} = __MODULE__.ApprenticeServer.start_link()
+    {:ok, pid} = __MODULE__.ApprenticeServer.start_link([])
     result = GenServer.call(pid, {:file, path})
     :ok = GenServer.stop(pid)
     result
