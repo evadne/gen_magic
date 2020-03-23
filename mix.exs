@@ -5,7 +5,7 @@ defmodule GenMagic.MixProject do
     [
       app: :gen_magic,
       version: "0.20.83",
-      elixir: "~> 1.6",
+      elixir: "~> 1.7",
       start_permanent: Mix.env() == :prod,
       compilers: [:elixir_make] ++ Mix.compilers(),
       deps: deps()
