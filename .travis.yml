@@ -13,3 +13,6 @@ before_script:
   - mix compile –warnings-as-errors
   - mix credo --strict
   - if [[ "$TRAVIS_ELIXIR_VERSION" =~ "1.10" ]]; then mix format mix.exs "{config,clients,games,lib,test}/**/*.{ex,exs}" --check-formatted; fi
+
+before_install:
+  - sudo apt-get -y build-essentials erlang-dev
