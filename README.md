@@ -1,5 +1,9 @@
 # GenMagic
 
+Elixir bindings for [libmagic](http://man7.org/linux/man-pages/man3/libmagic.3.html). Determine the type and contents of a file.
+
+[![Build Status](https://travis-ci.org/devstopfix/gen_magic.svg?branch=release_v1)](https://travis-ci.org/devstopfix/gen_magic)
+
 **TODO: Add description**
 
 ## Installation
