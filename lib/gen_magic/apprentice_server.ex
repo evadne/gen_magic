@@ -22,7 +22,7 @@ defmodule GenMagic.ApprenticeServer do
     case File.stat(worker_path) do
       {:ok, _} ->
         port =
-          Port.open({:spawn_executable, worker_path}, [
+          Port.open({:spawn_executable, to_charlist(worker_path)}, [
             :stderr_to_stdout,
             :binary,
             :exit_status,
