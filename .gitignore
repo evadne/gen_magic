@@ -1,7 +1,7 @@
 # The directory Mix will write compiled artifacts to.
 /_build/
 *.o
-priv/
+priv/apprentice
 
 # If you run "mix test --cover", coverage assets end up here.
 /cover/
@@ -25,3 +25,6 @@ erl_crash.dump
 gen_magic-*.tar
 
 .elixir_ls/
+
+# Magic files
+priv/*mgc

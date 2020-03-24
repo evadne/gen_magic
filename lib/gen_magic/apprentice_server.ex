@@ -28,8 +28,7 @@ defmodule GenMagic.ApprenticeServer do
 
   def init(database_patterns: database_patterns) do
     {worker_path, worker_arguments} = Configuration.get_worker_command(database_patterns)
-    # worker_options = [stdin: true, stdout: true, stderr: true, monitor: true]
-    # worker_timeout = Configuration.get_worker_timeout()
+
     case File.stat(worker_path) do
       {:ok, _} ->
         port =

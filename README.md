@@ -12,7 +12,7 @@ by adding `gen_magic` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:gen_magic, "~> 0.1.0"}
+    {:gen_magic, "~> 0.20"}
   ]
 end
 ```
@@ -20,7 +20,6 @@ end
 Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)
 and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
 be found at [https://hexdocs.pm/gen_magic](https://hexdocs.pm/gen_magic).
-
 
 ## Usage
 
@@ -37,7 +36,10 @@ database = [
 The GenServer SHOULD be run under a supervisor or a pool as it is designed to end should it receive any unexpected error. Here we run it under a supervisor:
 
 ```elixir
-{:ok, _} = Supervisor.start_link([{GenMagic.ApprenticeServer, [database_patterns: [database], name: :gen_magic]}], strategy: :one_for_one)
+{:ok, _} = Supervisor.start_link([
+  {GenMagic.ApprenticeServer,
+  [database_patterns: [database], name: :gen_magic]}],
+  strategy: :one_for_one)
 ```
 
 Now we can ask it to inspect a file:
@@ -64,5 +66,7 @@ For a one shot test, use the helper method:
 
 Run an endless cycle to prove that the GenServer is resilient:
 
-    find /usr/share/ -name *png | xargs mix run test/soak.exs
-    find . -name *ex | xargs mix run test/soak.exs
+```bash
+find /usr/share/ -name *png | xargs mix run test/soak.exs
+find . -name *ex | xargs mix run test/soak.exs
+```

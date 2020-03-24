@@ -47,6 +47,20 @@ defmodule GenMagicTest do
              GenServer.call(:gen_magic, {:file, path})
   end
 
+  test "Custom database file recognises Elixir files" do
+    database = Path.join(File.cwd!(), "priv/elixir.mgc")
+    {:ok, pid} = Magic.start_link(database_patterns: [database])
+    path = Path.join(File.cwd!(), "mix.exs")
+
+    assert GenServer.call(pid, {:file, path}) ==
+             {:ok,
+              [
+                mime_type: "text/x-elixir",
+                encoding: "us-ascii",
+                content: "Elixir module source text"
+              ]}
+  end
+
   @tag breaking: true, timeout: 180_000
   test "Load test local files and missing files" do
     {:ok, pid} = Magic.start_link([])
