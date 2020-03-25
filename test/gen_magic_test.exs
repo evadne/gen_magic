@@ -4,7 +4,7 @@ defmodule GenMagicTest do
 
   alias GenMagic.ApprenticeServer, as: Magic
 
-  @iterations 10_000
+  @iterations 10
 
   test "Makefile is text file" do
     {:ok, pid} = Magic.start_link([])
@@ -47,6 +47,7 @@ defmodule GenMagicTest do
              GenServer.call(:gen_magic, {:file, path})
   end
 
+  @tag :ci
   test "Custom database file recognises Elixir files" do
     database = Path.join(File.cwd!(), "test/elixir.mgc")
     {:ok, pid} = Magic.start_link(database_patterns: [database])
@@ -61,7 +62,7 @@ defmodule GenMagicTest do
               ]}
   end
 
-  @tag breaking: true, timeout: 180_000
+  @tag :breaking
   test "Load test local files and missing files" do
     {:ok, pid} = Magic.start_link([])
 
