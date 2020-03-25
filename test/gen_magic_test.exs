@@ -33,7 +33,9 @@ defmodule GenMagicTest do
     |> assert
   end
 
+  @tag :ci
   test "Non-existent file" do
+    Process.flag(:trap_exit, true)
     {:ok, pid} = Apprentice.start_link([])
     path = missing_filename()
     assert_no_file(GenServer.call(pid, {:file, path}))
