@@ -48,7 +48,7 @@ defmodule GenMagicTest do
   end
 
   test "Custom database file recognises Elixir files" do
-    database = Path.join(File.cwd!(), "priv/elixir.mgc")
+    database = Path.join(File.cwd!(), "test/elixir.mgc")
     {:ok, pid} = Magic.start_link(database_patterns: [database])
     path = Path.join(File.cwd!(), "mix.exs")
 

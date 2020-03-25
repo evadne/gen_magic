@@ -27,4 +27,4 @@ gen_magic-*.tar
 .elixir_ls/
 
 # Magic files
-priv/*mgc
+test/magic.mgc

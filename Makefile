@@ -12,9 +12,9 @@ EXECUTABLE = $(EXECUTABLE_DIRECTORY)/apprentice
 # Unit test custom magic file
 
 MAGIC = file
-PRIV_DIRECTORY = priv
-TARGET_MAGIC = $(PRIV_DIRECTORY)/elixir.mgc
-SOURCE_MAGIC = $(PRIV_DIRECTORY)/elixir
+TEST_DIRECTORY = test
+TARGET_MAGIC = $(TEST_DIRECTORY)/elixir.mgc
+SOURCE_MAGIC = $(TEST_DIRECTORY)/elixir
 
 # Target
 
@@ -34,8 +34,8 @@ $(EXECUTABLE_DIRECTORY):
 # Test case
 
 $(TARGET_MAGIC): $(SOURCE_MAGIC)
-	cd $(PRIV_DIRECTORY); $(MAGIC) -C -m elixir; rm magic.mgc
+	cd $(TEST_DIRECTORY); $(MAGIC) -C -m elixir
 
 clean:
 	rm -f $(EXECUTABLE) $(OBJECT_FILES) $(BEAM_FILES)
-	rm -f $(PRIV_DIRECTORY)/*mgc
+	rm -f $(TEST_DIRECTORY)/*mgc
