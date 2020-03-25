@@ -1,6 +1,6 @@
 # GenMagic
 
-Elixir bindings for [libmagic](http://man7.org/linux/man-pages/man3/libmagic.3.html). Determine the type and contents of a file.
+Determine file type. Elixir bindings for [libmagic](http://man7.org/linux/man-pages/man3/libmagic.3.html).
 
 [![Build Status](https://travis-ci.org/devstopfix/gen_magic.svg?branch=release_v1)](https://travis-ci.org/devstopfix/gen_magic)
 
@@ -16,10 +16,6 @@ def deps do
   ]
 end
 ```
-
-Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)
-and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
-be found at [https://hexdocs.pm/gen_magic](https://hexdocs.pm/gen_magic).
 
 ## Usage
 
@@ -45,7 +41,7 @@ The GenServer SHOULD be run under a supervisor or a pool as it is designed to en
 Now we can ask it to inspect a file:
 
 ```elixir
-> GenServer.call(:gen_magic, {:file, Path.expand("~/.bash_history")})
+> GenMagic.ApprenticeServer.file(:gen_magic, Path.expand("~/.bash_history"))
 {:ok, [mime_type: "text/plain", encoding: "us-ascii", content: "ASCII text"]}
 ```
 
