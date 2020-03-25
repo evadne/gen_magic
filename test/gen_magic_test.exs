@@ -2,16 +2,16 @@ defmodule GenMagicTest do
   use ExUnit.Case
   doctest GenMagic
 
-  alias GenMagic.ApprenticeServer, as: Magic
+  alias GenMagic.ApprenticeServer, as: Apprentice
 
-  @iterations 10
+  @iterations 100
 
   test "Makefile is text file" do
-    {:ok, pid} = Magic.start_link([])
+    {:ok, pid} = Apprentice.start_link([])
     path = makefile_path()
 
     assert {:ok, [mime_type: "text/x-makefile", encoding: _, content: _]} =
-             GenServer.call(pid, {:file, path})
+             Apprentice.file(pid, path)
   end
 
   test "Top level helper function" do
@@ -19,65 +19,47 @@ defmodule GenMagicTest do
     assert {:ok, [mime_type: "text/x-makefile", encoding: _, content: _]} = GenMagic.perform(path)
   end
 
-  @tag load: true, timeout: 180_000
+  @tag load: true
   test "Load test local files" do
-    {:ok, pid} = Magic.start_link([])
+    {:ok, pid} = Apprentice.start_link([])
 
     files_stream()
     |> Stream.cycle()
     |> Stream.take(@iterations)
     |> Stream.map(
-      &assert {:ok, [mime_type: _, encoding: _, content: _]} = GenServer.call(pid, {:file, &1})
+      &assert {:ok, [mime_type: _, encoding: _, content: _]} = Apprentice.file(pid, &1)
     )
     |> Enum.all?()
     |> assert
   end
 
   test "Non-existent file" do
-    {:ok, pid} = Magic.start_link([])
+    {:ok, pid} = Apprentice.start_link([])
     path = missing_filename()
     assert_no_file(GenServer.call(pid, {:file, path}))
   end
 
   test "Named process" do
-    {:ok, _pid} = Magic.start_link(name: :gen_magic)
+    {:ok, _pid} = Apprentice.start_link(name: :gen_magic)
     path = makefile_path()
 
     assert {:ok, [mime_type: "text/x-makefile", encoding: _, content: _]} =
-             GenServer.call(:gen_magic, {:file, path})
+             Apprentice.file(:gen_magic, path)
   end
 
   @tag :ci
   test "Custom database file recognises Elixir files" do
     database = Path.join(File.cwd!(), "test/elixir.mgc")
-    {:ok, pid} = Magic.start_link(database_patterns: [database])
+    {:ok, pid} = Apprentice.start_link(database_patterns: [database])
     path = Path.join(File.cwd!(), "mix.exs")
 
-    assert GenServer.call(pid, {:file, path}) ==
+    assert Apprentice.file(pid, path) ==
              {:ok,
               [
                 mime_type: "text/x-elixir",
                 encoding: "us-ascii",
                 content: "Elixir module source text"
               ]}
-  end
-
-  @tag :breaking
-  test "Load test local files and missing files" do
-    {:ok, pid} = Magic.start_link([])
-
-    files_stream()
-    |> Stream.intersperse(missing_filename())
-    |> Stream.cycle()
-    |> Stream.take(@iterations)
-    |> Stream.map(fn path ->
-      case GenServer.call(pid, {:file, path}) do
-        {:ok, [mime_type: _, encoding: _, content: _]} -> true
-        {:error, "no_file"} -> true
-      end
-    end)
-    |> Enum.all?()
-    |> assert
   end
 
   defp missing_filename do
@@ -91,10 +73,10 @@ defmodule GenMagicTest do
 
   defp files_stream,
     do:
-      "/usr/share/**/*"
+      Path.join(File.cwd!(), "deps/**/*")
       |> Path.wildcard()
       |> Stream.reject(&File.dir?/1)
-      |> Stream.chunk_every(500)
+      |> Stream.chunk_every(10)
       |> Stream.flat_map(&Enum.shuffle/1)
 
   defp assert_no_file({:error, msg}) do
