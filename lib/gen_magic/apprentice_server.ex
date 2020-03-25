@@ -8,6 +8,8 @@ defmodule GenMagic.ApprenticeServer do
   alias GenMagic.Configuration
   use GenServer
 
+  @type result() :: [mime_type: String.t(), encoding: String.t(), content: String.t()]
+
   @worker_timeout Configuration.get_worker_timeout()
 
   def start_link([]) do
@@ -31,6 +33,7 @@ defmodule GenMagic.ApprenticeServer do
   @doc """
   Determine a file type.
   """
+  @spec file(pid() | atom(), String.t()) :: {:ok, result()} | {:error, term()}
   def file(pid, path) do
     GenServer.call(pid, {:file, path})
   end
