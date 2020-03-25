@@ -1,1 +1,5 @@
-ExUnit.start(exclude: [:load])
+excluded =
+  [:breaking] ++
+    if(System.get_env("TRAVIS") != nil, do: [:ci], else: [])
+
+ExUnit.start(exclude: excluded)

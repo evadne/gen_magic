@@ -98,7 +98,10 @@ void setup_options_file(char *optarg) {
     exit(1);
   }
   struct file *next = malloc(sizeof(struct file));
-  next->path = strdup(optarg);
+  size_t path_length = strlen(optarg) + 1;
+  char *path = malloc(path_length);
+  memcpy(path, optarg, path_length);
+  next->path = path;
   next->next = magic_database;
   magic_database = next;
 }
@@ -142,7 +145,7 @@ void process_line(char *line) {
     print_error("no_file");
     return;
   }
-  
+
   process_file(path);
 }
 

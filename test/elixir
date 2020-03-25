@@ -1,0 +1,6 @@
+#------------------------------------------------------------------------------
+# file:  file(1) magic for Elixir
+# URL:  https://elixir-lang.org/
+
+0 string/w	defmodule	Elixir module source text
+!:mime	text/x-elixir
