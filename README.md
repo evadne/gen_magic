@@ -58,6 +58,17 @@ For a one shot test, use the helper method:
  ]}
 ```
 
+### Check uploaded files in a Phoenix controller
+
+You can inspect the file from your controller:
+
+```elixir
+def upload(conn, %{"upload" => %{path: path}}) do
+  {:ok, [mime_type: _, encoding: _, content: content]} = GenMagic.ApprenticeServer.file(:gen_magic, path)
+  text(conn, "Received your file containing #{content}")
+end
+```
+
 ## Soak test
 
 Run an endless cycle to prove that the GenServer is resilient:
