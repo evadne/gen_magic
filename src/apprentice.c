@@ -1,3 +1,6 @@
+//
+// (c) Evadne Wu, Faria Education Group / International Baccalaureate 2019
+//
 #include <errno.h>
 #include <getopt.h>
 #include <libgen.h>

@@ -8,7 +8,8 @@ defmodule GenMagic.MixProject do
       elixir: "~> 1.7",
       start_permanent: Mix.env() == :prod,
       compilers: [:elixir_make] ++ Mix.compilers(),
-      deps: deps()
+      deps: deps(),
+      source_url: "https://github.com/devstopfix/gen_magic"
     ]
   end
 

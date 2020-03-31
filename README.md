@@ -6,8 +6,7 @@ Determine file type. Elixir bindings for [libmagic](http://man7.org/linux/man-pa
 
 ## Installation
 
-If [available in Hex](https://hex.pm/docs/publish), the package can be installed
-by adding `gen_magic` to your list of dependencies in `mix.exs`:
+The package can be installed by adding `gen_magic` to your list of dependencies in `mix.exs`:
 
 ```elixir
 def deps do
@@ -19,7 +18,7 @@ end
 
 ## Usage
 
-The libmagic library requires a magic file which can be installed in various locations on your file system. A good way of locating it is given in the [config](config/config.exs):
+The libmagic library requires a magic file which can be installed in various locations on your file system. A good way of locating it is given in the [default config](config/config.exs):
 
 ```elixir
 database = [
@@ -77,3 +76,11 @@ Run an endless cycle to prove that the GenServer is resilient:
 find /usr/share/ -name *png | xargs mix run test/soak.exs
 find . -name *ex | xargs mix run test/soak.exs
 ```
+
+## Acknowledgements
+
+Original design, implementation and C code by [Evadne Wu](https://github.com/evadne). Elixir wrapper by [devstopfix](https://github.com/devstopfix/gen_magic).
+
+## License
+
+TBC.

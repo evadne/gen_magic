@@ -38,4 +38,3 @@ $(TARGET_MAGIC): $(SOURCE_MAGIC)
 
 clean:
 	rm -f $(EXECUTABLE) $(OBJECT_FILES) $(BEAM_FILES)
-	rm -f $(TEST_DIRECTORY)/*mgc
