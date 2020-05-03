@@ -1,0 +1,2 @@
+excludeDirectories = "{$excludeDirectories,deps,_build,doc,src/*.o}"
+excludeFiles = "{$excludeFiles,*.dump}"
