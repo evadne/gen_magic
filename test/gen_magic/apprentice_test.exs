@@ -78,7 +78,7 @@ defmodule GenMagic.ApprenticeTest do
       assert {:error, _} = :erlang.binary_to_term(data)
     end
 
-    test "works with a 4096 path", %{port: port} do
+    test "works with big path", %{port: port} do
       file = too_big() <> "/a"
       File.mkdir_p!(too_big())
       File.touch!(file)
@@ -86,6 +86,11 @@ defmodule GenMagic.ApprenticeTest do
       send(port, {self(), {:command, :erlang.term_to_binary({:file, file})}})
       assert_receive {^port, {:data, data}}
       assert {:ok, _} = :erlang.binary_to_term(data)
+      refute_receive _
+      file = too_big() <> "/aaaaaaaaaa"
+      send(port, {self(), {:command, :erlang.term_to_binary({:file, file})}})
+      assert_receive {^port, {:data, data}}
+      assert {:error, :badarg} = :erlang.binary_to_term(data)
       refute_receive _
     end
   end

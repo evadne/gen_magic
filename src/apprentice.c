@@ -94,7 +94,7 @@ int main(int argc, char **argv) {
   if (ei_x_free(&ok_buf) != 0)
     exit(ERROR_EI);
 
-  byte buf[5000];
+  byte buf[4111];
   while (read_cmd(buf) > 0) {
     process_command(buf);
   }

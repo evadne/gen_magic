@@ -81,7 +81,7 @@ defmodule GenMagic.Server do
 
   @spec child_spec([option()]) :: Supervisor.child_spec()
   @spec start_link([option()]) :: :gen_statem.start_ret()
-  @spec perform(t(), Path.t(), timeout()) :: {:ok, Result.t()} | {:error, term()}
+  @spec perform(t(), Path.t(), timeout()) :: {:ok, Result.t()} | {:error, term() | String.t()}
   @spec status(t(), timeout()) :: {:ok, Status.t()} | {:error, term()}
   @spec stop(t(), term(), timeout()) :: :ok
 
@@ -198,8 +198,6 @@ defmodule GenMagic.Server do
         1 -> :no_database
         2 -> :no_argument
         3 -> :missing_database
-        4 -> :term_error
-        5 -> :ei_error
       end
 
     {:stop, {:error, error}, data}
