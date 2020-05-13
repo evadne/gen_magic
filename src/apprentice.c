@@ -2,18 +2,17 @@
 // The Sorcerer’s Apprentice
 //
 // To use this program, compile it with dynamically linked libmagic, as mirrored
-// at https://github.com/threatstack/libmagic. You may install it with apt-get, yum or brew.
-// Refer to the Makefile for further reference.
+// at https://github.com/threatstack/libmagic. You may install it with apt-get,
+// yum or brew. Refer to the Makefile for further reference.
 //
-// This program is designed to run interactively as a backend daemon to the GenMagic library,
-// and follows the command line pattern:
+// This program is designed to run interactively as a backend daemon to the
+// GenMagic library, and follows the command line pattern:
 //
 //     $ apprentice --database-file <file> --database-default
 //
-// Where each argument either refers to a compiled or uncompiled magic database, or the default
-// database. They will be loaded in the sequence that they were specified. Note that you must
-// specify at least one database.
-// Erlang Term
+// Where each argument either refers to a compiled or uncompiled magic database,
+// or the default database. They will be loaded in the sequence that they were
+// specified. Note that you must specify at least one database. Erlang Term
 //
 // -- main: send atom ready
 //          enter loop
@@ -25,18 +24,18 @@
 //            error: {:error, :badarg} | {:error, {errno, String.t()}}
 //          {:stop, _} -> exit(ERROR_OK)    -> exit 0
 //
+#include <ei.h>
 #include <errno.h>
 #include <getopt.h>
 #include <libgen.h>
+#include <magic.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/types.h>
 #include <unistd.h>
-#include <ei.h>
-#include <magic.h>
 #define USAGE "[--database-file <path/to/magic.mgc> | --database-default, ...]"
 #define DELIMITER "\t"
 
@@ -47,13 +46,13 @@
 #define ERROR_BAD_TERM 4
 #define ERROR_EI 5
 
-#define ANSI_INFO   "\x1b[37m" // gray
-#define ANSI_OK     "\x1b[32m" // green
-#define ANSI_ERROR  "\x1b[31m" // red
+#define ANSI_INFO "\x1b[37m"   // gray
+#define ANSI_OK "\x1b[32m"     // green
+#define ANSI_ERROR "\x1b[31m"  // red
 #define ANSI_IGNORE "\x1b[90m" // red
-#define ANSI_RESET  "\x1b[0m"
+#define ANSI_RESET "\x1b[0m"
 
-#define MAGIC_FLAGS_COMMON (MAGIC_CHECK|MAGIC_ERROR)
+#define MAGIC_FLAGS_COMMON (MAGIC_CHECK | MAGIC_ERROR)
 magic_t magic_setup(int flags);
 
 typedef char byte;
@@ -77,22 +76,23 @@ struct magic_file {
   char *path;
 };
 
-static struct magic_file* magic_database;
-static magic_t magic_mime_type; // MAGIC_MIME_TYPE
+static struct magic_file *magic_database;
+static magic_t magic_mime_type;     // MAGIC_MIME_TYPE
 static magic_t magic_mime_encoding; // MAGIC_MIME_ENCODING
-static magic_t magic_type_name; // MAGIC_NONE
+static magic_t magic_type_name;     // MAGIC_NONE
 
-int main (int argc, char **argv) {
+int main(int argc, char **argv) {
   ei_init();
   setup_environment();
   setup_options(argc, argv);
   setup_system();
 
   ei_x_buff ok_buf;
-  if (ei_x_new_with_version(&ok_buf) || ei_x_encode_atom(&ok_buf, "ready")) return 5;
+  if (ei_x_new_with_version(&ok_buf) || ei_x_encode_atom(&ok_buf, "ready"))
+    return 5;
   write_cmd(ok_buf.buff, ok_buf.index);
   if (ei_x_free(&ok_buf) != 0)
-      exit(ERROR_EI);
+    exit(ERROR_EI);
 
   byte buf[5000];
   while (read_cmd(buf) > 0) {
@@ -109,10 +109,11 @@ int process_command(byte *buf) {
   index = 0;
 
   if (ei_decode_version(buf, &index, &version) != 0)
-      exit(ERROR_BAD_TERM);
+    exit(ERROR_BAD_TERM);
 
   // Initialize result
-  if (ei_x_new_with_version(&result) || ei_x_encode_tuple_header(&result, 2)) exit(ERROR_EI);
+  if (ei_x_new_with_version(&result) || ei_x_encode_tuple_header(&result, 2))
+    exit(ERROR_EI);
 
   if (ei_decode_tuple_header(buf, &index, &arity) != 0) {
     error(&result, "badarg");
@@ -145,8 +146,8 @@ int process_command(byte *buf) {
       return 1;
     }
   } else if (strncmp(atom, "bytes", 3) == 0) {
-      ei_x_encode_atom(&result, "ok");
-      ei_x_encode_atom(&result, "bytes_not_implemented");
+    ei_x_encode_atom(&result, "ok");
+    ei_x_encode_atom(&result, "bytes_not_implemented");
   } else if (strncmp(atom, "stop", 3) == 0) {
     exit(ERROR_OK);
   } else {
@@ -157,43 +158,41 @@ int process_command(byte *buf) {
   write_cmd(result.buff, result.index);
 
   if (ei_x_free(&result) != 0)
-      exit(ERROR_EI);
+    exit(ERROR_EI);
   return 0;
 }
 
-void setup_environment() {
-  opterr = 0;
-}
+void setup_environment() { opterr = 0; }
 
 void setup_options(int argc, char **argv) {
   const char *option_string = "f:";
   static struct option long_options[] = {
-    {"database-file", required_argument, 0, 'f'},
-    {"database-default", no_argument, 0, 'd'},
-    {0, 0, 0, 0}
-  };
+      {"database-file", required_argument, 0, 'f'},
+      {"database-default", no_argument, 0, 'd'},
+      {0, 0, 0, 0}};
 
   int option_character;
   while (1) {
     int option_index = 0;
-    option_character = getopt_long(argc, argv, option_string, long_options, &option_index);
+    option_character =
+        getopt_long(argc, argv, option_string, long_options, &option_index);
     if (-1 == option_character) {
       break;
     }
     switch (option_character) {
-      case 'f': {
-        setup_options_file(optarg);
-        break;
-      }
-      case 'd': {
-        setup_options_default();
-        break;
-      }
-      case '?':
-      default: {
-        exit(ERROR_NO_ARGUMENT);
-        break;
-      }
+    case 'f': {
+      setup_options_file(optarg);
+      break;
+    }
+    case 'd': {
+      setup_options_default();
+      break;
+    }
+    case '?':
+    default: {
+      exit(ERROR_NO_ARGUMENT);
+      break;
+    }
     }
   }
 }
@@ -227,9 +226,9 @@ void setup_options_default() {
 }
 
 void setup_system() {
-  magic_mime_encoding = magic_setup(MAGIC_FLAGS_COMMON|MAGIC_MIME_ENCODING);
-  magic_mime_type = magic_setup(MAGIC_FLAGS_COMMON|MAGIC_MIME_TYPE);
-  magic_type_name = magic_setup(MAGIC_FLAGS_COMMON|MAGIC_NONE);
+  magic_mime_encoding = magic_setup(MAGIC_FLAGS_COMMON | MAGIC_MIME_ENCODING);
+  magic_mime_type = magic_setup(MAGIC_FLAGS_COMMON | MAGIC_MIME_TYPE);
+  magic_type_name = magic_setup(MAGIC_FLAGS_COMMON | MAGIC_NONE);
 }
 
 magic_t magic_setup(int flags) {
@@ -245,9 +244,6 @@ magic_t magic_setup(int flags) {
   }
   while (current_database) {
     magic_load(magic, current_database->path);
-    if (isatty(STDERR_FILENO)) {
-      fprintf(stderr, ANSI_RESET);
-    }
     current_database = current_database->next;
   }
   return magic;
@@ -276,7 +272,8 @@ void process_file(char *path, ei_x_buff *result) {
     ei_x_encode_tuple_header(result, 2);
     long errlon = (long)mime_encoding_errno;
     ei_x_encode_long(result, errlon);
-    ei_x_encode_binary(result, mime_encoding_error, strlen(mime_encoding_error));
+    ei_x_encode_binary(result, mime_encoding_error,
+                       strlen(mime_encoding_error));
     return;
   }
 
@@ -296,56 +293,53 @@ void process_file(char *path, ei_x_buff *result) {
   ei_x_encode_atom(result, "ok");
   ei_x_encode_tuple_header(result, 3);
   ei_x_encode_binary(result, mime_type_result, strlen(mime_type_result));
-  ei_x_encode_binary(result, mime_encoding_result, strlen(mime_encoding_result));
+  ei_x_encode_binary(result, mime_encoding_result,
+                     strlen(mime_encoding_result));
   ei_x_encode_binary(result, type_name_result, strlen(type_name_result));
   return;
 }
 
 // From https://erlang.org/doc/tutorial/erl_interface.html
-int read_exact(byte *buf, int len)
-{
-  int i, got=0;
+int read_exact(byte *buf, int len) {
+  int i, got = 0;
 
   do {
-      if ((i = read(0, buf+got, len-got)) <= 0){
-          return(i);
-      }
-    got += i;
-  } while (got<len);
-
-  return(len);
-}
-
-int write_exact(byte *buf, int len)
-{
-  int i, wrote = 0;
-
-  do {
-    if ((i = write(1, buf+wrote, len-wrote)) <= 0)
+    if ((i = read(0, buf + got, len - got)) <= 0) {
       return (i);
-    wrote += i;
-  } while (wrote<len);
+    }
+    got += i;
+  } while (got < len);
 
   return (len);
 }
 
-int read_cmd(byte *buf)
-{
+int write_exact(byte *buf, int len) {
+  int i, wrote = 0;
+
+  do {
+    if ((i = write(1, buf + wrote, len - wrote)) <= 0)
+      return (i);
+    wrote += i;
+  } while (wrote < len);
+
+  return (len);
+}
+
+int read_cmd(byte *buf) {
   int len;
 
   if (read_exact(buf, 2) != 2)
-    return(-1);
+    return (-1);
   len = (buf[0] << 8) | buf[1];
   return read_exact(buf, len);
 }
 
-int write_cmd(byte *buf, int len)
-{
+int write_cmd(byte *buf, int len) {
   byte li;
 
   li = (len >> 8) & 0xff;
   write_exact(&li, 1);
-  
+
   li = len & 0xff;
   write_exact(&li, 1);
 
@@ -358,5 +352,5 @@ void error(ei_x_buff *result, const char *error) {
   write_cmd(result->buff, result->index);
 
   if (ei_x_free(result) != 0)
-      exit(ERROR_EI);
+    exit(ERROR_EI);
 }
