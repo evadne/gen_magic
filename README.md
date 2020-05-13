@@ -101,9 +101,23 @@ Note that in this case we have opted to use a named process.
 For concurrency *and* resiliency, you may start the `GenMagic.Pool`. By default, it will start a `GenMagic.Server`
 worker per online scheduler:
 
-```elixir
-iex(1)> GenMagic.Pool.start_link([])
-iex(2)> GenMagic.Pool.perform(GenMagic.Pool, Path.expand("~/.bash_history"))
+You can add a pool in your application supervisor by adding it as a child:
+
+```
+    children =
+      [
+        # ...
+        {GenMagic.Pool, [name: YourApp.GenMagicPool, pool_size: 2]}
+      ]
+
+    opts = [strategy: :one_for_one, name: Pleroma.Supervisor]
+    Supervisor.start_link(children, opts)
+```
+
+And then you can use it with `GenMagic.Pool.perform/2`:
+
+```
+iex(1)> GenMagic.Pool.perform(YourApp.GenMagicPool, Path.expand("~/.bash_history"))
 {:ok, [mime_type: "text/plain", encoding: "us-ascii", content: "ASCII text"]}
 ```
 
