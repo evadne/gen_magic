@@ -34,6 +34,8 @@ Compilation of the underlying C program is automatic and handled by [elixir_make
 
 Depending on the use case, you may utilise a single (one-off) GenMagic process without reusing it as a daemon, or utilise a connection pool (such as Poolboy) in your application to run multiple persistent GenMagic processes.
 
+### Direct Usage
+
 To use GenMagic directly, you can use `GenMagic.Helpers.perform_once/1`:
 
 ```elixir
@@ -46,6 +48,14 @@ iex(1)> GenMagic.Helpers.perform_once "."
  }}
 ```
 
+Notes:
+
+1.  See `GenMagic.Server.start_link/1` and `t:GenMagic.Server.option/0` for more information on startup parameters.
+
+2.  See `GenMagic.Result` for details on the result provided.
+
+### Pooled Usage
+
 To use the GenMagic server as a daemon, you can start it first, keep a reference, then feed messages to it as you require:
 
 ```elixir
@@ -53,9 +63,10 @@ To use the GenMagic server as a daemon, you can start it first, keep a reference
 {:ok, result} = GenMagic.Server.perform(pid, path)
 ```
 
-See `GenMagic.Server.start_link/1` and `t:GenMagic.Server.option/0` for more information on startup parameters.
+If you wish to use a pool, the following pool implementations are bundled:
 
-See `GenMagic.Result` for details on the result provided.
+- `GenMagic.Pool.Poolboy`
+- `GenMagic.Pool.NimblePool`
 
 ## Configuration
 
@@ -88,7 +99,7 @@ iex(1)> GenMagic.Helpers.perform_once(Path.join(File.cwd!(), "Makefile"))
 
 ### Supervised Requests
 
-The Server should be run under a pool which provides concurrency *and* resiliency.
+The Server should be run under a supervisor which provides resiliency.
 
 Here we run it under a supervisor:
 
@@ -101,10 +112,38 @@ Now we can ask it to inspect a file:
 
 ```elixir
 iex(2)> GenMagic.Server.perform(:gen_magic, Path.expand("~/.bash_history"))
-{:ok, [mime_type: "text/plain", encoding: "us-ascii", content: "ASCII text"]}
+%GenMagic.Result{
+ content: "ASCII text",
+ encoding: "us-ascii",
+ mime_type: "text/plain"
+}}
 ```
 
 Note that in this case we have opted to use a named process.
+
+### Pooled Requests
+
+For concurrency *and* resiliency, you can use GenMagic in a pool.
+
+You can add a pool in your application supervisor by adding it as a child:
+
+elixir
+```
+children = [
+  {GenMagic.Pool.NimblePool, pool_name: MyApp.GenMagicPool, pool_size: 2}
+]
+
+opts = [strategy: :one_for_one, name: MyApp.Supervisor]
+Supervisor.start_link(children, opts)
+```
+
+And then you can use it with `c:GenMagic.Pool.perform/3`:
+
+elixir
+```
+iex(1)> GenMagic.Pool.NimblePool.perform(MyApp.GenMagicPool, Path.expand("~/.bash_history"), [])
+{:ok, …}
+```
 
 ### Check Uploaded Files
 
@@ -117,7 +156,7 @@ def upload(conn, %{"upload" => %{path: path}}) do,
 end
 ```
 
-Obviously, it will be more ideal if you have wrapped `GenMagic.Server` in a pool such as Poolboy, to avoid constantly starting and stopping the underlying C program.
+Obviously, it will be more ideal if you have wrapped `GenMagic.Server` in a pool, to avoid constantly starting and stopping the underlying C program.
 
 ## Notes
 
