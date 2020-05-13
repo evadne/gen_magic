@@ -9,6 +9,7 @@ defmodule GenMagic.Server do
   alias GenMagic.Result
   alias GenMagic.Server.Data
   alias GenMagic.Server.Status
+  import Kernel, except: [send: 2]
 
   @typedoc """
   Represents the reference to the underlying server, as returned by `:gen_statem`.
@@ -72,7 +73,7 @@ defmodule GenMagic.Server do
   - `:recycling`: This is the state the Server will be in, if its underlying C program needs to be
     recycled. This state is triggered whenever the cycle count reaches the defined value as per
     `:recycle_threshold`.
-    
+
     In this state, the Server is able to accept requests, but they will not be processed until the
     underlying C server program has been started again.
   """
@@ -168,7 +169,7 @@ defmodule GenMagic.Server do
   end
 
   @doc false
-  def starting(:enter, x, %{request: nil, port: nil} = data) do
+  def starting(:enter, _, %{request: nil, port: nil} = data) do
     port = Port.open(data.port_name, data.port_options)
     {:keep_state, %{data | port: port}, data.startup_timeout}
   end
@@ -212,8 +213,7 @@ defmodule GenMagic.Server do
   @doc false
   def available({:call, from}, {:perform, path}, data) do
     data = %{data | cycles: data.cycles + 1, request: {path, from, :erlang.now()}}
-    command = :erlang.term_to_binary({:file, path})
-    _ = send(data.port, {self(), {:command, command}})
+    send(data.port, {:file, path})
     {:next_state, :processing, data}
   end
 
@@ -248,7 +248,7 @@ defmodule GenMagic.Server do
 
   @doc false
   def recycling(:enter, _, %{request: nil, port: port} = data) when is_port(port) do
-    _ = send(data.port, {self(), {:command, :erlang.term_to_binary({:stop, :recycle})}})
+    send(data.port, {:stop, :recycle})
     {:keep_state_and_data, data.startup_timeout}
   end
 
@@ -265,6 +265,10 @@ defmodule GenMagic.Server do
   @doc false
   def recycling(:info, {port, {:exit_status, 0}}, %{port: port} = data) do
     {:next_state, :starting, %{data | port: nil, cycles: 0}}
+  end
+
+  defp send(port, command) do
+    Kernel.send(port, {self(), {:command, :erlang.term_to_binary(command)}})
   end
 
   @errnos %{
