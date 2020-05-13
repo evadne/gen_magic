@@ -248,7 +248,7 @@ defmodule GenMagic.Server do
     data = %{data | request: nil}
     response = {:reply, from, handle_response(response)}
     next_state = (data.cycles >= data.recycle_threshold && :recycling) || :available
-    {:next_state, next_state, data, response}
+    {:next_state, next_state, data, [response, :hibernate]}
   end
 
   @doc false
