@@ -78,7 +78,7 @@ iex(1)> GenMagic.Helpers.perform_once(Path.join(File.cwd!(), "Makefile"))
 
 ### Supervised Requests
 
-The Server should be run under a pool which provides concurrency *and* resiliency.
+The Server should be run under a supervisor which provides resiliency.
 
 Here we run it under a supervisor:
 
@@ -95,6 +95,17 @@ iex(2)> GenMagic.Server.perform(:gen_magic, Path.expand("~/.bash_history"))
 ```
 
 Note that in this case we have opted to use a named process.
+
+### Pool
+
+For concurrency *and* resiliency, you may start the `GenMagic.Pool`. By default, it will start a `GenMagic.Server`
+worker per online scheduler:
+
+```elixir
+iex(1)> GenMagic.Pool.start_link([])
+iex(2)> GenMagic.Pool.perform(GenMagic.Pool, Path.expand("~/.bash_history"))
+{:ok, [mime_type: "text/plain", encoding: "us-ascii", content: "ASCII text"]}
+```
 
 ### Check Uploaded Files
 
