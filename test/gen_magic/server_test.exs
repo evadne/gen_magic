@@ -12,6 +12,7 @@ defmodule GenMagic.ServerTest do
       assert {:ok, _} = GenMagic.Server.perform(pid, path)
       assert {:ok, %{cycles: 2}} = GenMagic.Server.status(pid)
       assert {:ok, _} = GenMagic.Server.perform(pid, path)
+      Process.sleep(100)
       assert {:ok, %{cycles: 0}} = GenMagic.Server.status(pid)
     end
 
@@ -20,10 +21,13 @@ defmodule GenMagic.ServerTest do
       path = absolute_path("Makefile")
       assert {:ok, %{cycles: 0}} = GenMagic.Server.status(pid)
       assert {:ok, _} = GenMagic.Server.perform(pid, path)
+      Process.sleep(100)
       assert {:ok, %{cycles: 0}} = GenMagic.Server.status(pid)
       assert {:ok, _} = GenMagic.Server.perform(pid, path)
+      Process.sleep(100)
       assert {:ok, %{cycles: 0}} = GenMagic.Server.status(pid)
       assert {:ok, _} = GenMagic.Server.perform(pid, path)
+      Process.sleep(100)
       assert {:ok, %{cycles: 0}} = GenMagic.Server.status(pid)
     end
   end

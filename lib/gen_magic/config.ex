@@ -12,7 +12,7 @@ defmodule GenMagic.Config do
   end
 
   def get_port_options(options) do
-    arguments = [:use_stdio, :stderr_to_stdout, :binary, :exit_status]
+    arguments = [:use_stdio, :binary, :exit_status, {:packet, 2}]
 
     case get_executable_arguments(options) do
       [] -> arguments

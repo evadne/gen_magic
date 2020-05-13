@@ -168,7 +168,7 @@ defmodule GenMagic.Server do
   end
 
   @doc false
-  def starting(:enter, _, %{request: nil, port: nil} = data) do
+  def starting(:enter, x, %{request: nil, port: nil} = data) do
     port = Port.open(data.port_name, data.port_options)
     {:keep_state, %{data | port: port}, data.startup_timeout}
   end
@@ -184,8 +184,24 @@ defmodule GenMagic.Server do
   end
 
   @doc false
-  def starting(:info, {port, {:data, "ok\n"}}, %{port: port} = data) do
-    {:next_state, :available, data}
+  def starting(:info, {port, {:data, binary}}, %{port: port} = data) do
+    case :erlang.binary_to_term(binary) do
+      :ready ->
+        {:next_state, :available, data}
+    end
+  end
+
+  def starting(:info, {port, {:exit_status, code}}, %{port: port} = data) do
+    error =
+      case code do
+        1 -> :no_database
+        2 -> :no_argument
+        3 -> :missing_database
+        4 -> :term_error
+        5 -> :ei_error
+      end
+
+    {:stop, {:error, error}, data}
   end
 
   @doc false
@@ -196,7 +212,8 @@ defmodule GenMagic.Server do
   @doc false
   def available({:call, from}, {:perform, path}, data) do
     data = %{data | cycles: data.cycles + 1, request: {path, from, :erlang.now()}}
-    _ = send(data.port, {self(), {:command, "file; " <> path <> "\n"}})
+    command = :erlang.term_to_binary({:file, path})
+    _ = send(data.port, {self(), {:command, command}})
     {:next_state, :processing, data}
   end
 
@@ -231,7 +248,7 @@ defmodule GenMagic.Server do
 
   @doc false
   def recycling(:enter, _, %{request: nil, port: port} = data) when is_port(port) do
-    _ = send(data.port, {self(), :close})
+    _ = send(data.port, {self(), {:command, :erlang.term_to_binary({:stop, :recycle})}})
     {:keep_state_and_data, data.startup_timeout}
   end
 
@@ -246,19 +263,26 @@ defmodule GenMagic.Server do
   end
 
   @doc false
-  def recycling(:info, {port, :closed}, %{port: port} = data) do
+  def recycling(:info, {port, {:exit_status, 0}}, %{port: port} = data) do
     {:next_state, :starting, %{data | port: nil, cycles: 0}}
   end
 
-  defp handle_response("ok; " <> message) do
-    case message |> String.trim() |> String.split("\t") do
-      [mime_type, encoding, content] -> {:ok, Result.build(mime_type, encoding, content)}
-      _ -> {:error, :malformed_response}
-    end
-  end
+  @errnos %{
+    2 => :enoent,
+    13 => :eaccess,
+    21 => :eisdir,
+    20 => :enotdir,
+    12 => :enomem,
+    24 => :emfile
+  }
+  @errno Map.keys(@errnos)
 
-  defp handle_response("error; " <> message) do
-    {:error, String.trim(message)}
+  defp handle_response(data) do
+    case :erlang.binary_to_term(data) do
+      {:ok, {mime_type, encoding, content}} -> {:ok, Result.build(mime_type, encoding, content)}
+      {:error, {errno, _}} when errno in @errno -> {:error, @errnos[errno]}
+      {:error, {errno, string}} -> {:error, "#{errno}: #{string}"}
+    end
   end
 
   defp handle_status_call(from, state, data) do

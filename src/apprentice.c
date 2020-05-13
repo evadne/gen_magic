@@ -13,16 +13,18 @@
 // Where each argument either refers to a compiled or uncompiled magic database, or the default
 // database. They will be loaded in the sequence that they were specified. Note that you must
 // specify at least one database.
+// Erlang Term
 //
-// Once the program starts, it will print info statements if run from a terminal, then it will
-// print `ok`. From this point onwards, additional commands can be passed:
-//  
-//     file; <path>
+// -- main: send atom ready
+//          enter loop
 //
-// Results will be printed tab-separated, e.g.:
+// -- while
+//      get {:file, path} -> process_file   -> ok | error
+//          {:bytes, path} -> process_bytes -> ok | error
+//            ok: {:ok, {type, encoding, name}}
+//            error: {:error, :badarg} | {:error, {errno, String.t()}}
+//          {:stop, _} -> exit(ERROR_OK)    -> exit 0
 //
-//     ok; application/zip	binary	Zip archive data, at least v1.0 to extract
-
 #include <errno.h>
 #include <getopt.h>
 #include <libgen.h>
@@ -33,8 +35,8 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <ei.h>
 #include <magic.h>
-
 #define USAGE "[--database-file <path/to/magic.mgc> | --database-default, ...]"
 #define DELIMITER "\t"
 
@@ -42,6 +44,8 @@
 #define ERROR_NO_DATABASE 1
 #define ERROR_NO_ARGUMENT 2
 #define ERROR_MISSING_DATABASE 3
+#define ERROR_BAD_TERM 4
+#define ERROR_EI 5
 
 #define ANSI_INFO   "\x1b[37m" // gray
 #define ANSI_OK     "\x1b[32m" // green
@@ -52,16 +56,20 @@
 #define MAGIC_FLAGS_COMMON (MAGIC_CHECK|MAGIC_ERROR)
 magic_t magic_setup(int flags);
 
+typedef char byte;
+
+int read_cmd(byte *buf);
+int write_cmd(byte *buf, int len);
+
 void setup_environment();
 void setup_options(int argc, char **argv);
 void setup_options_file(char *optarg);
 void setup_options_default();
 void setup_system();
+int process_command(byte *buf);
 void process_line(char *line);
-void process_file(char *path);
-void print_info(const char *format, ...);
-void print_ok(const char *format, ...);
-void print_error(const char *format, ...);
+void process_file(char *path, ei_x_buff *result);
+void error(ei_x_buff *result, const char *error);
 
 struct magic_file {
   struct magic_file *prev;
@@ -75,17 +83,81 @@ static magic_t magic_mime_encoding; // MAGIC_MIME_ENCODING
 static magic_t magic_type_name; // MAGIC_NONE
 
 int main (int argc, char **argv) {
+  ei_init();
   setup_environment();
   setup_options(argc, argv);
   setup_system();
-  printf("ok\n");
-  fflush(stdout);
 
-  char line[4096];
-  while (fgets(line, 4096, stdin)) {
-    process_line(line);
+  ei_x_buff ok_buf;
+  if (ei_x_new_with_version(&ok_buf) || ei_x_encode_atom(&ok_buf, "ready")) return 5;
+  write_cmd(ok_buf.buff, ok_buf.index);
+  if (ei_x_free(&ok_buf) != 0)
+      exit(ERROR_EI);
+
+  byte buf[5000];
+  while (read_cmd(buf) > 0) {
+    process_command(buf);
   }
 
+  return 0;
+}
+
+int process_command(byte *buf) {
+  ei_x_buff result;
+  char atom[128];
+  int index, version, arity;
+  index = 0;
+
+  if (ei_decode_version(buf, &index, &version) != 0)
+      exit(ERROR_BAD_TERM);
+
+  // Initialize result
+  if (ei_x_new_with_version(&result) || ei_x_encode_tuple_header(&result, 2)) exit(ERROR_EI);
+
+  if (ei_decode_tuple_header(buf, &index, &arity) != 0) {
+    error(&result, "badarg");
+    return 1;
+  }
+
+  if (arity != 2) {
+    error(&result, "badarg");
+    return 1;
+  }
+
+  if (ei_decode_atom(buf, &index, atom) != 0) {
+    error(&result, "badarg");
+    return 1;
+  }
+
+  if (strncmp(atom, "file", 3) == 0) {
+    int pathtype;
+    int pathsize;
+    char path[4097];
+    ei_get_type(buf, &index, &pathtype, &pathsize);
+
+    if (pathtype == ERL_BINARY_EXT && pathsize < 4096) {
+      long bin_length;
+      ei_decode_binary(buf, &index, path, &bin_length);
+      path[pathsize] = '\0';
+      process_file(path, &result);
+    } else {
+      error(&result, "badarg");
+      return 1;
+    }
+  } else if (strncmp(atom, "bytes", 3) == 0) {
+      ei_x_encode_atom(&result, "ok");
+      ei_x_encode_atom(&result, "bytes_not_implemented");
+  } else if (strncmp(atom, "stop", 3) == 0) {
+    exit(ERROR_OK);
+  } else {
+    error(&result, "badarg");
+    return 1;
+  }
+
+  write_cmd(result.buff, result.index);
+
+  if (ei_x_free(&result) != 0)
+      exit(ERROR_EI);
   return 0;
 }
 
@@ -119,7 +191,6 @@ void setup_options(int argc, char **argv) {
       }
       case '?':
       default: {
-        print_info("%s %s\n", basename(argv[0]), USAGE);
         exit(ERROR_NO_ARGUMENT);
         break;
       }
@@ -128,9 +199,7 @@ void setup_options(int argc, char **argv) {
 }
 
 void setup_options_file(char *optarg) {
-  print_info("Requested database %s", optarg);
   if (0 != access(optarg, R_OK)) {
-    print_error("Missing Database");
     exit(ERROR_MISSING_DATABASE);
   }
 
@@ -147,7 +216,6 @@ void setup_options_file(char *optarg) {
 }
 
 void setup_options_default() {
-  print_info("requested default database");
 
   struct magic_file *next = malloc(sizeof(struct magic_file));
   next->path = NULL;
@@ -165,12 +233,10 @@ void setup_system() {
 }
 
 magic_t magic_setup(int flags) {
-  print_info("starting libmagic instance for flags %i", flags);
 
   magic_t magic = magic_open(flags);
   struct magic_file *current_database = magic_database;
   if (!current_database) {
-    print_error("no database configured");
     exit(ERROR_NO_DATABASE);
   }
 
@@ -178,14 +244,6 @@ magic_t magic_setup(int flags) {
     current_database = current_database->prev;
   }
   while (current_database) {
-    if (isatty(STDERR_FILENO)) {
-      fprintf(stderr, ANSI_IGNORE);
-    }
-    if (!current_database->path) {
-      print_info("loading default database");
-    } else {
-      print_info("loading database %s", current_database->path);
-    }
     magic_load(magic, current_database->path);
     if (isatty(STDERR_FILENO)) {
       fprintf(stderr, ANSI_RESET);
@@ -195,90 +253,110 @@ magic_t magic_setup(int flags) {
   return magic;
 }
 
-void process_line(char *line) {
-  char path[4096];
-
-  if (0 == strcmp(line, "exit\n")) {
-    exit(ERROR_OK);
-  }
-  if (1 != sscanf(line, "file; %[^\n]s", path)) {
-    print_error("invalid commmand");
-    return;
-  }
-
-  if (0 != access(path, R_OK)) {
-    print_error("unable to access file");
-    return;
-  }
-
-  process_file(path);
-}
-
-void process_file(char *path) {
+void process_file(char *path, ei_x_buff *result) {
   const char *mime_type_result = magic_file(magic_mime_type, path);
   const char *mime_type_error = magic_error(magic_mime_type);
-  const char *mine_encoding_result = magic_file(magic_mime_encoding, path);
-  const char *mine_encoding_error = magic_error(magic_mime_encoding);
+  int mime_type_errno = magic_errno(magic_mime_type);
+
+  if (mime_type_errno > 0) {
+    ei_x_encode_atom(result, "error");
+    ei_x_encode_tuple_header(result, 2);
+    long errlon = (long)mime_type_errno;
+    ei_x_encode_long(result, errlon);
+    ei_x_encode_binary(result, mime_type_error, strlen(mime_type_error));
+    return;
+  }
+
+  const char *mime_encoding_result = magic_file(magic_mime_encoding, path);
+  const char *mime_encoding_error = magic_error(magic_mime_encoding);
+  int mime_encoding_errno = magic_errno(magic_mime_encoding);
+
+  if (mime_encoding_error) {
+    ei_x_encode_atom(result, "error");
+    ei_x_encode_tuple_header(result, 2);
+    long errlon = (long)mime_encoding_errno;
+    ei_x_encode_long(result, errlon);
+    ei_x_encode_binary(result, mime_encoding_error, strlen(mime_encoding_error));
+    return;
+  }
+
   const char *type_name_result = magic_file(magic_type_name, path);
   const char *type_name_error = magic_error(magic_type_name);
-
-  if (mime_type_error) {
-    print_error(mime_type_error);
-    return;
-  }
-
-  if (mine_encoding_error) {
-    print_error(mine_encoding_error);
-    return;
-  }
+  int type_name_errno = magic_errno(magic_type_name);
 
   if (type_name_error) {
-    print_error(type_name_error);
+    ei_x_encode_atom(result, "error");
+    ei_x_encode_tuple_header(result, 2);
+    long errlon = (long)type_name_errno;
+    ei_x_encode_long(result, errlon);
+    ei_x_encode_binary(result, type_name_error, strlen(type_name_error));
     return;
   }
 
-  print_ok("%s%s%s%s%s", mime_type_result, DELIMITER, mine_encoding_result, DELIMITER, type_name_result);
+  ei_x_encode_atom(result, "ok");
+  ei_x_encode_tuple_header(result, 3);
+  ei_x_encode_binary(result, mime_type_result, strlen(mime_type_result));
+  ei_x_encode_binary(result, mime_encoding_result, strlen(mime_encoding_result));
+  ei_x_encode_binary(result, type_name_result, strlen(type_name_result));
+  return;
 }
 
-void print_info(const char *format, ...) {
-  if (!isatty(STDOUT_FILENO)) {
-    return;
-  }
+// From https://erlang.org/doc/tutorial/erl_interface.html
+int read_exact(byte *buf, int len)
+{
+  int i, got=0;
 
-  printf(ANSI_INFO "info; " ANSI_RESET);
-  va_list arguments;
-  va_start(arguments, format);
-  vprintf(format, arguments);
-  va_end(arguments);
-  printf("\n");
+  do {
+      if ((i = read(0, buf+got, len-got)) <= 0){
+          return(i);
+      }
+    got += i;
+  } while (got<len);
+
+  return(len);
 }
 
-void print_ok(const char *format, ...) {
-  if (isatty(STDOUT_FILENO)) {
-    printf(ANSI_OK "ok; " ANSI_RESET);
-  } else {
-    printf("ok; ");
-  }
+int write_exact(byte *buf, int len)
+{
+  int i, wrote = 0;
 
-  va_list arguments;
-  va_start(arguments, format);
-  vprintf(format, arguments);
-  va_end(arguments);
-  printf("\n");
-  fflush(stdout);
+  do {
+    if ((i = write(1, buf+wrote, len-wrote)) <= 0)
+      return (i);
+    wrote += i;
+  } while (wrote<len);
+
+  return (len);
 }
 
-void print_error(const char *format, ...) {
-  if (isatty(STDERR_FILENO)) {
-    fprintf(stderr, ANSI_ERROR "error; " ANSI_RESET);
-  } else {
-    fprintf(stderr, "error; ");
-  }
+int read_cmd(byte *buf)
+{
+  int len;
 
-  va_list arguments;
-  va_start(arguments, format);
-  vfprintf(stderr, format, arguments);
-  va_end(arguments);
-  fprintf(stderr, "\n");
-  fflush(stderr);
+  if (read_exact(buf, 2) != 2)
+    return(-1);
+  len = (buf[0] << 8) | buf[1];
+  return read_exact(buf, len);
+}
+
+int write_cmd(byte *buf, int len)
+{
+  byte li;
+
+  li = (len >> 8) & 0xff;
+  write_exact(&li, 1);
+  
+  li = len & 0xff;
+  write_exact(&li, 1);
+
+  return write_exact(buf, len);
+}
+
+void error(ei_x_buff *result, const char *error) {
+  ei_x_encode_atom(result, "error");
+  ei_x_encode_atom(result, error);
+  write_cmd(result->buff, result->index);
+
+  if (ei_x_free(result) != 0)
+      exit(ERROR_EI);
 }

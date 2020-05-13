@@ -1,8 +1,10 @@
 # Apprentice binary
 
 CC = gcc
-CFLAGS = -std=c99 -g -Wall -Wextra -Werror
-LDFLAGS = -lm -lmagic
+ERL_EI_INCLUDE:=$(shell  erl -eval 'io:format("~s", [code:lib_dir(erl_interface, include)])' -s init stop -noshell | head -1)
+ERL_EI_LIB:=$(shell  erl -eval 'io:format("~s", [code:lib_dir(erl_interface, lib)])' -s init stop -noshell | head -1)
+CFLAGS = -std=c99 -g -Wall -Wextra -Werror -I$(ERL_EI_INCLUDE)
+LDFLAGS = -L/usr/include/linux/ -L$(ERL_EI_LIB) -lm -lmagic -lei -lpthread
 HEADER_FILES = src
 C_SOURCE_FILES = src/apprentice.c
 OBJECT_FILES = $(C_SOURCE_FILES:.c=.o)
