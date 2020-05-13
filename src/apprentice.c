@@ -132,7 +132,7 @@ int process_command(byte *buf) {
     return 1;
   }
 
-  if (strncmp(atom, "file", 4) == 0) {
+  if (strlen(atom) == 4 && strncmp(atom, "file", 4) == 0) {
     char path[4097];
     ei_get_type(buf, &index, &termtype, &termsize);
 
@@ -145,7 +145,7 @@ int process_command(byte *buf) {
       error(&result, "badarg");
       return 1;
     }
-  } else if (strncmp(atom, "bytes", 5) == 0) {
+  } else if (strlen(atom) == 5 && strncmp(atom, "bytes", 5) == 0) {
     int termtype;
     int termsize;
     char bytes[51];
@@ -160,7 +160,7 @@ int process_command(byte *buf) {
       error(&result, "badarg");
       return 1;
     }
-  } else if (strncmp(atom, "stop", 4) == 0) {
+  } else if (strlen(atom) == 4 && strncmp(atom, "stop", 4) == 0) {
     exit(ERROR_OK);
   } else {
     error(&result, "badarg");
