@@ -66,8 +66,14 @@ defmodule GenMagic.ApprenticeTest do
       refute_receive _
     end
 
-    test "works", %{port: port} do
+    test "file works", %{port: port} do
       send(port, {self(), {:command, :erlang.term_to_binary({:file, Path.expand("Makefile")})}})
+      assert_receive {^port, {:data, data}}
+      assert {:ok, _} = :erlang.binary_to_term(data)
+    end
+
+    test "bytes works", %{port: port} do
+      send(port, {self(), {:command, :erlang.term_to_binary({:bytes, "some bytes!"})}})
       assert_receive {^port, {:data, data}}
       assert {:ok, _} = :erlang.binary_to_term(data)
     end
@@ -78,7 +84,7 @@ defmodule GenMagic.ApprenticeTest do
       assert {:error, _} = :erlang.binary_to_term(data)
     end
 
-    test "works with big path", %{port: port} do
+    test "works with big file path", %{port: port} do
       file = too_big() <> "/a"
       File.mkdir_p!(too_big())
       File.touch!(file)

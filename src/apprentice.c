@@ -68,7 +68,9 @@ void setup_system();
 int process_command(byte *buf);
 void process_line(char *line);
 void process_file(char *path, ei_x_buff *result);
+void process_bytes(char *bytes, int size, ei_x_buff *result);
 void error(ei_x_buff *result, const char *error);
+void handle_magic_error(magic_t handle, int errn, ei_x_buff *result);
 
 struct magic_file {
   struct magic_file *prev;
@@ -105,7 +107,7 @@ int main(int argc, char **argv) {
 int process_command(byte *buf) {
   ei_x_buff result;
   char atom[128];
-  int index, version, arity;
+  int index, version, arity, termtype, termsize;
   index = 0;
 
   if (ei_decode_version(buf, &index, &version) != 0)
@@ -130,25 +132,35 @@ int process_command(byte *buf) {
     return 1;
   }
 
-  if (strncmp(atom, "file", 3) == 0) {
-    int pathtype;
-    int pathsize;
+  if (strncmp(atom, "file", 4) == 0) {
     char path[4097];
-    ei_get_type(buf, &index, &pathtype, &pathsize);
+    ei_get_type(buf, &index, &termtype, &termsize);
 
-    if (pathtype == ERL_BINARY_EXT && pathsize < 4096) {
+    if (termtype == ERL_BINARY_EXT && termsize < 4096) {
       long bin_length;
       ei_decode_binary(buf, &index, path, &bin_length);
-      path[pathsize] = '\0';
+      path[termsize] = '\0';
       process_file(path, &result);
     } else {
       error(&result, "badarg");
       return 1;
     }
-  } else if (strncmp(atom, "bytes", 3) == 0) {
-    ei_x_encode_atom(&result, "ok");
-    ei_x_encode_atom(&result, "bytes_not_implemented");
-  } else if (strncmp(atom, "stop", 3) == 0) {
+  } else if (strncmp(atom, "bytes", 5) == 0) {
+    int termtype;
+    int termsize;
+    char bytes[51];
+    ei_get_type(buf, &index, &termtype, &termsize);
+
+    if (termtype == ERL_BINARY_EXT && termsize < 50) {
+      long bin_length;
+      ei_decode_binary(buf, &index, bytes, &bin_length);
+      bytes[termsize] = '\0';
+      process_bytes(bytes, termsize, &result);
+    } else {
+      error(&result, "badarg");
+      return 1;
+    }
+  } else if (strncmp(atom, "stop", 4) == 0) {
     exit(ERROR_OK);
   } else {
     error(&result, "badarg");
@@ -249,44 +261,72 @@ magic_t magic_setup(int flags) {
   return magic;
 }
 
-void process_file(char *path, ei_x_buff *result) {
-  const char *mime_type_result = magic_file(magic_mime_type, path);
-  const char *mime_type_error = magic_error(magic_mime_type);
-  int mime_type_errno = magic_errno(magic_mime_type);
+void process_bytes(char *path, int size, ei_x_buff *result) {
+  const char *mime_type_result = magic_buffer(magic_mime_type, path, size);
+  const int mime_type_errno = magic_errno(magic_mime_type);
 
   if (mime_type_errno > 0) {
-    ei_x_encode_atom(result, "error");
-    ei_x_encode_tuple_header(result, 2);
-    long errlon = (long)mime_type_errno;
-    ei_x_encode_long(result, errlon);
-    ei_x_encode_binary(result, mime_type_error, strlen(mime_type_error));
+    handle_magic_error(magic_mime_type, mime_type_errno, result);
+    return;
+  }
+
+  const char *mime_encoding_result = magic_buffer(magic_mime_encoding, path, size);
+  int mime_encoding_errno = magic_errno(magic_mime_encoding);
+
+  if (mime_encoding_errno > 0) {
+    handle_magic_error(magic_mime_encoding, mime_encoding_errno, result);
+    return;
+  }
+
+  const char *type_name_result = magic_buffer(magic_type_name, path, size);
+  int type_name_errno = magic_errno(magic_type_name);
+
+  if (type_name_errno > 0) {
+    handle_magic_error(magic_type_name, type_name_errno, result);
+    return;
+  }
+
+  ei_x_encode_atom(result, "ok");
+  ei_x_encode_tuple_header(result, 3);
+  ei_x_encode_binary(result, mime_type_result, strlen(mime_type_result));
+  ei_x_encode_binary(result, mime_encoding_result,
+                     strlen(mime_encoding_result));
+  ei_x_encode_binary(result, type_name_result, strlen(type_name_result));
+  return;
+}
+
+void handle_magic_error(magic_t handle, int errn, ei_x_buff *result) {
+  const char *error = magic_error(handle);
+  ei_x_encode_atom(result, "error");
+  ei_x_encode_tuple_header(result, 2);
+  long errlon = (long)errn;
+  ei_x_encode_long(result, errlon);
+  ei_x_encode_binary(result, error, strlen(error));
+  return;
+}
+
+void process_file(char *path, ei_x_buff *result) {
+  const char *mime_type_result = magic_file(magic_mime_type, path);
+  const int mime_type_errno = magic_errno(magic_mime_type);
+
+  if (mime_type_errno > 0) {
+    handle_magic_error(magic_mime_type, mime_type_errno, result);
     return;
   }
 
   const char *mime_encoding_result = magic_file(magic_mime_encoding, path);
-  const char *mime_encoding_error = magic_error(magic_mime_encoding);
   int mime_encoding_errno = magic_errno(magic_mime_encoding);
 
-  if (mime_encoding_error) {
-    ei_x_encode_atom(result, "error");
-    ei_x_encode_tuple_header(result, 2);
-    long errlon = (long)mime_encoding_errno;
-    ei_x_encode_long(result, errlon);
-    ei_x_encode_binary(result, mime_encoding_error,
-                       strlen(mime_encoding_error));
+  if (mime_encoding_errno > 0) {
+    handle_magic_error(magic_mime_encoding, mime_encoding_errno, result);
     return;
   }
 
   const char *type_name_result = magic_file(magic_type_name, path);
-  const char *type_name_error = magic_error(magic_type_name);
   int type_name_errno = magic_errno(magic_type_name);
 
-  if (type_name_error) {
-    ei_x_encode_atom(result, "error");
-    ei_x_encode_tuple_header(result, 2);
-    long errlon = (long)type_name_errno;
-    ei_x_encode_long(result, errlon);
-    ei_x_encode_binary(result, type_name_error, strlen(type_name_error));
+  if (type_name_errno > 0) {
+    handle_magic_error(magic_type_name, type_name_errno, result);
     return;
   }
 

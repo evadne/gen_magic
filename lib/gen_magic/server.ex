@@ -211,7 +211,14 @@ defmodule GenMagic.Server do
   @doc false
   def available({:call, from}, {:perform, path}, data) do
     data = %{data | cycles: data.cycles + 1, request: {path, from, :erlang.now()}}
-    send(data.port, {:file, path})
+
+    arg =
+      case path do
+        path when is_binary(path) -> {:file, path}
+        {:bytes, bytes} -> {:bytes, bytes}
+      end
+
+    send(data.port, arg)
     {:next_state, :processing, data}
   end
 
