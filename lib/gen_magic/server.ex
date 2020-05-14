@@ -282,7 +282,8 @@ defmodule GenMagic.Server do
     21 => :eisdir,
     20 => :enotdir,
     12 => :enomem,
-    24 => :emfile
+    24 => :emfile,
+    36 => :enametoolong,
   }
   @errno Map.keys(@errnos)
 

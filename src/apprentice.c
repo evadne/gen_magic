@@ -57,9 +57,6 @@ magic_t magic_setup(int flags);
 
 typedef char byte;
 
-int read_cmd(byte *buf);
-int write_cmd(byte *buf, int len);
-
 void setup_environment();
 void setup_options(int argc, char **argv);
 void setup_options_file(char *optarg);
@@ -69,6 +66,8 @@ int process_command(byte *buf);
 void process_line(char *line);
 void process_file(char *path, ei_x_buff *result);
 void process_bytes(char *bytes, int size, ei_x_buff *result);
+size_t read_cmd(byte *buf);
+size_t write_cmd(byte *buf, size_t len);
 void error(ei_x_buff *result, const char *error);
 void handle_magic_error(magic_t handle, int errn, ei_x_buff *result);
 
@@ -91,17 +90,17 @@ int main(int argc, char **argv) {
 
   ei_x_buff ok_buf;
   if (ei_x_new_with_version(&ok_buf) || ei_x_encode_atom(&ok_buf, "ready"))
-    return 5;
+    exit(ERROR_EI);
   write_cmd(ok_buf.buff, ok_buf.index);
   if (ei_x_free(&ok_buf) != 0)
     exit(ERROR_EI);
 
-  byte buf[4111];
+  byte buf[4112];
   while (read_cmd(buf) > 0) {
     process_command(buf);
   }
 
-  return 0;
+  return 255;
 }
 
 int process_command(byte *buf) {
@@ -110,12 +109,14 @@ int process_command(byte *buf) {
   int index, version, arity, termtype, termsize;
   index = 0;
 
-  if (ei_decode_version(buf, &index, &version) != 0)
+  if (ei_decode_version(buf, &index, &version) != 0) {
     exit(ERROR_BAD_TERM);
+  }
 
   // Initialize result
-  if (ei_x_new_with_version(&result) || ei_x_encode_tuple_header(&result, 2))
+  if (ei_x_new_with_version(&result) || ei_x_encode_tuple_header(&result, 2)) {
     exit(ERROR_EI);
+  }
 
   if (ei_decode_tuple_header(buf, &index, &arity) != 0) {
     error(&result, "badarg");
@@ -169,8 +170,9 @@ int process_command(byte *buf) {
 
   write_cmd(result.buff, result.index);
 
-  if (ei_x_free(&result) != 0)
+  if (ei_x_free(&result) != 0) {
     exit(ERROR_EI);
+  }
   return 0;
 }
 
@@ -270,7 +272,8 @@ void process_bytes(char *path, int size, ei_x_buff *result) {
     return;
   }
 
-  const char *mime_encoding_result = magic_buffer(magic_mime_encoding, path, size);
+  const char *mime_encoding_result =
+      magic_buffer(magic_mime_encoding, path, size);
   int mime_encoding_errno = magic_errno(magic_mime_encoding);
 
   if (mime_encoding_errno > 0) {
@@ -339,8 +342,11 @@ void process_file(char *path, ei_x_buff *result) {
   return;
 }
 
-// From https://erlang.org/doc/tutorial/erl_interface.html
-int read_exact(byte *buf, int len) {
+// Adapted from https://erlang.org/doc/tutorial/erl_interface.html
+// Changed `read_cmd`, the original one was buggy given some length (due to
+// endinaness).
+// TODO: Check if `write_cmd` exhibits the same issue.
+size_t read_exact(byte *buf, size_t len) {
   int i, got = 0;
 
   do {
@@ -353,7 +359,7 @@ int read_exact(byte *buf, int len) {
   return (len);
 }
 
-int write_exact(byte *buf, int len) {
+size_t write_exact(byte *buf, size_t len) {
   int i, wrote = 0;
 
   do {
@@ -365,16 +371,20 @@ int write_exact(byte *buf, int len) {
   return (len);
 }
 
-int read_cmd(byte *buf) {
-  int len;
-
-  if (read_exact(buf, 2) != 2)
-    return (-1);
-  len = (buf[0] << 8) | buf[1];
-  return read_exact(buf, len);
+size_t read_cmd(byte *buf) {
+  int i;
+  if ((i = read(0, buf, sizeof(uint16_t))) <= 0) {
+    return (i);
+  }
+  uint16_t len16 = *(uint16_t *)buf;
+  len16 = ntohs(len16);
+  if (len16 > 4111) {
+    exit(ERROR_BAD_TERM);
+  }
+  return read_exact(buf, len16);
 }
 
-int write_cmd(byte *buf, int len) {
+size_t write_cmd(byte *buf, size_t len) {
   byte li;
 
   li = (len >> 8) & 0xff;
