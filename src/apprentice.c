@@ -12,18 +12,34 @@
 //
 // Where each argument either refers to a compiled or uncompiled magic database,
 // or the default database. They will be loaded in the sequence that they were
-// specified. Note that you must specify at least one database. Erlang Term
+// specified. Note that you must specify at least one database.
 //
-// -- main: send atom ready
-//          enter loop
+// Communication is done over STDIN/STDOUT as binary packets of 2 bytes length
+// plus X bytes payload, where the payload is an erlang term encoded with
+// :erlang.term_to_binary/1 and decoded with :erlang.binary_to_term/1.
 //
-// -- while
-//      get {:file, path} -> process_file   -> ok | error
-//          {:bytes, path} -> process_bytes -> ok | error
-//            ok: {:ok, {type, encoding, name}}
-//            error: {:error, :badarg} | {:error, {errno, String.t()}}
-//          {:stop, _} -> exit(ERROR_OK)    -> exit 0
+// Once the program is ready, it sends the `:ready` atom. The startup can fail
+// for multiples reasons, and the program will exit accordingly:
+// - 1: No database
+// - 2: Missing/Bad argument
+// - 3: Missing database
 //
+// Commands are sent to the program STDIN as an erlang term of `{Operation,
+// Argument}`, and response of `{:ok | :error, Response}`.
+//
+// Invalid packets will cause the program to exit (exit code 4). This will
+// happen if your Erlang Term format doesn't match the version the program has
+// been compiled with, or if you send a command too huge.
+//
+// The program may exit with error codes 5 or 255 if something went wrong (such
+// as error allocating terms, or if stdin is lost).
+//
+// Commands:
+// {:file, path :: String.t()} :: {:ok, {type, encoding, name}} | {:error,
+// :badarg} | {:error, {errno :: integer(), String.t()}}
+// {:bytes, binary()} :: same as :file
+// {:stop, reason :: atom()} :: exit 0
+
 #include <ei.h>
 #include <errno.h>
 #include <getopt.h>
@@ -36,8 +52,6 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
-#define USAGE "[--database-file <path/to/magic.mgc> | --database-default, ...]"
-#define DELIMITER "\t"
 
 #define ERROR_OK 0
 #define ERROR_NO_DATABASE 1
@@ -45,12 +59,6 @@
 #define ERROR_MISSING_DATABASE 3
 #define ERROR_BAD_TERM 4
 #define ERROR_EI 5
-
-#define ANSI_INFO "\x1b[37m"   // gray
-#define ANSI_OK "\x1b[32m"     // green
-#define ANSI_ERROR "\x1b[31m"  // red
-#define ANSI_IGNORE "\x1b[90m" // red
-#define ANSI_RESET "\x1b[0m"
 
 #define MAGIC_FLAGS_COMMON (MAGIC_CHECK | MAGIC_ERROR)
 magic_t magic_setup(int flags);
