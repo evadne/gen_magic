@@ -60,6 +60,11 @@
 #define ERROR_BAD_TERM 4
 #define ERROR_EI 5
 
+// We use a bigger than possible valid command length (around 4111 bytes) to
+// allow more precise errors when using too long paths.
+#define COMMAND_LEN 8000
+#define COMMAND_BUFFER_SIZE COMMAND_LEN + 1
+
 #define MAGIC_FLAGS_COMMON (MAGIC_CHECK | MAGIC_ERROR)
 magic_t magic_setup(int flags);
 
@@ -70,14 +75,14 @@ void setup_options(int argc, char **argv);
 void setup_options_file(char *optarg);
 void setup_options_default();
 void setup_system();
-int process_command(byte *buf);
-void process_line(char *line);
+int process_command(uint16_t len, byte *buf);
 void process_file(char *path, ei_x_buff *result);
 void process_bytes(char *bytes, int size, ei_x_buff *result);
 size_t read_cmd(byte *buf);
 size_t write_cmd(byte *buf, size_t len);
 void error(ei_x_buff *result, const char *error);
 void handle_magic_error(magic_t handle, int errn, ei_x_buff *result);
+void fdseek(uint16_t count);
 
 struct magic_file {
   struct magic_file *prev;
@@ -103,27 +108,33 @@ int main(int argc, char **argv) {
   if (ei_x_free(&ok_buf) != 0)
     exit(ERROR_EI);
 
-  byte buf[4112];
-  while (read_cmd(buf) > 0) {
-    process_command(buf);
+  byte buf[COMMAND_BUFFER_SIZE];
+  uint16_t len;
+  while ((len = read_cmd(buf)) > 0) {
+    process_command(len, buf);
   }
 
   return 255;
 }
 
-int process_command(byte *buf) {
+int process_command(uint16_t len, byte *buf) {
   ei_x_buff result;
   char atom[128];
   int index, version, arity, termtype, termsize;
   index = 0;
 
-  if (ei_decode_version(buf, &index, &version) != 0) {
-    exit(ERROR_BAD_TERM);
-  }
-
   // Initialize result
   if (ei_x_new_with_version(&result) || ei_x_encode_tuple_header(&result, 2)) {
     exit(ERROR_EI);
+  }
+
+  if (len >= COMMAND_LEN) {
+    error(&result, "badarg");
+    return 1;
+  }
+
+  if (ei_decode_version(buf, &index, &version) != 0) {
+    exit(ERROR_BAD_TERM);
   }
 
   if (ei_decode_tuple_header(buf, &index, &arity) != 0) {
@@ -145,11 +156,16 @@ int process_command(byte *buf) {
     char path[4097];
     ei_get_type(buf, &index, &termtype, &termsize);
 
-    if (termtype == ERL_BINARY_EXT && termsize < 4096) {
-      long bin_length;
-      ei_decode_binary(buf, &index, path, &bin_length);
-      path[termsize] = '\0';
-      process_file(path, &result);
+    if (termtype == ERL_BINARY_EXT) {
+      if (termsize < 4096) {
+        long bin_length;
+        ei_decode_binary(buf, &index, path, &bin_length);
+        path[termsize] = '\0';
+        process_file(path, &result);
+      } else {
+        error(&result, "enametoolong");
+        return 1;
+      }
     } else {
       error(&result, "badarg");
       return 1;
@@ -176,6 +192,7 @@ int process_command(byte *buf) {
     return 1;
   }
 
+  // Empty the buffer.
   write_cmd(result.buff, result.index);
 
   if (ei_x_free(&result) != 0) {
@@ -386,9 +403,15 @@ size_t read_cmd(byte *buf) {
   }
   uint16_t len16 = *(uint16_t *)buf;
   len16 = ntohs(len16);
-  if (len16 > 4111) {
-    exit(ERROR_BAD_TERM);
+
+  // Buffer isn't large enough: just return possible len, without reading.
+  // Up to the caller of verifying the size again and return an error.
+  // buf left unchanged.
+  if (len16 > COMMAND_LEN) {
+    fdseek(len16);
+    return len16;
   }
+
   return read_exact(buf, len16);
 }
 
@@ -411,4 +434,12 @@ void error(ei_x_buff *result, const char *error) {
 
   if (ei_x_free(result) != 0)
     exit(ERROR_EI);
+}
+
+void fdseek(uint16_t count) {
+  int i = 0;
+  while (i < count) {
+    getchar();
+    i += 1;
+  }
 }

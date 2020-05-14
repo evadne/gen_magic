@@ -283,7 +283,7 @@ defmodule GenMagic.Server do
     20 => :enotdir,
     12 => :enomem,
     24 => :emfile,
-    36 => :enametoolong,
+    36 => :enametoolong
   }
   @errno Map.keys(@errnos)
 
@@ -292,6 +292,7 @@ defmodule GenMagic.Server do
       {:ok, {mime_type, encoding, content}} -> {:ok, Result.build(mime_type, encoding, content)}
       {:error, {errno, _}} when errno in @errno -> {:error, @errnos[errno]}
       {:error, {errno, string}} -> {:error, "#{errno}: #{string}"}
+      {:error, _} = error -> error
     end
   end
 
