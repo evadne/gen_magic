@@ -2,7 +2,7 @@
 // The Sorcerer’s Apprentice
 //
 // To use this program, compile it with dynamically linked libmagic, as mirrored
-// at https://github.com/threatstack/libmagic. You may install it with apt-get,
+// at https://github.com/file/file. You may install it with apt-get,
 // yum or brew. Refer to the Makefile for further reference.
 //
 // This program is designed to run interactively as a backend daemon to the
