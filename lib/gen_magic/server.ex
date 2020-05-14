@@ -81,7 +81,8 @@ defmodule GenMagic.Server do
 
   @spec child_spec([option()]) :: Supervisor.child_spec()
   @spec start_link([option()]) :: :gen_statem.start_ret()
-  @spec perform(t(), Path.t(), timeout()) :: {:ok, Result.t()} | {:error, term() | String.t()}
+  @spec perform(t(), Path.t() | {:bytes, binary()}, timeout()) ::
+          {:ok, Result.t()} | {:error, term() | String.t()}
   @spec status(t(), timeout()) :: {:ok, Status.t()} | {:error, term()}
   @spec stop(t(), term(), timeout()) :: :ok
 
@@ -185,10 +186,9 @@ defmodule GenMagic.Server do
   end
 
   @doc false
-  def starting(:info, {port, {:data, binary}}, %{port: port} = data) do
-    case :erlang.binary_to_term(binary) do
-      :ready ->
-        {:next_state, :available, data}
+  def starting(:info, {port, {:data, ready}}, %{port: port} = data) do
+    case :erlang.binary_to_term(ready) do
+      :ready -> {:next_state, :available, data}
     end
   end
 
@@ -198,6 +198,7 @@ defmodule GenMagic.Server do
         1 -> :no_database
         2 -> :no_argument
         3 -> :missing_database
+        code -> {:unexpected_error, code}
       end
 
     {:stop, {:error, error}, data}
@@ -243,12 +244,10 @@ defmodule GenMagic.Server do
   end
 
   @doc false
-  def processing(:info, {port, {:data, response}}, %{port: port} = data) do
-    {_, from, _} = data.request
-    data = %{data | request: nil}
+  def processing(:info, {port, {:data, response}}, %{port: port, request: {_, from, _}} = data) do
     response = {:reply, from, handle_response(response)}
     next_state = (data.cycles >= data.recycle_threshold && :recycling) || :available
-    {:next_state, next_state, data, [response, :hibernate]}
+    {:next_state, next_state, %{data | request: nil}, [response, :hibernate]}
   end
 
   @doc false
@@ -279,7 +278,6 @@ defmodule GenMagic.Server do
   @errnos %{
     2 => :enoent,
     13 => :eaccess,
-    21 => :eisdir,
     20 => :enotdir,
     12 => :enomem,
     24 => :emfile,

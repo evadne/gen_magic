@@ -192,7 +192,6 @@ int process_command(uint16_t len, byte *buf) {
     return 1;
   }
 
-  // Empty the buffer.
   write_cmd(result.buff, result.index);
 
   if (ei_x_free(&result) != 0) {
@@ -406,7 +405,7 @@ size_t read_cmd(byte *buf) {
 
   // Buffer isn't large enough: just return possible len, without reading.
   // Up to the caller of verifying the size again and return an error.
-  // buf left unchanged.
+  // buf left unchanged, stdin emptied of X bytes.
   if (len16 > COMMAND_LEN) {
     fdseek(len16);
     return len16;
