@@ -40,6 +40,7 @@
 // {:bytes, binary()} :: same as :file
 // {:stop, reason :: atom()} :: exit 0
 
+#include <arpa/inet.h>
 #include <ei.h>
 #include <errno.h>
 #include <getopt.h>
