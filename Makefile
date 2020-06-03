@@ -13,20 +13,17 @@ RM = rm -Rf
 # Unit test custom magic file
 
 MAGIC = file
-TEST_DIRECTORY = test
-TARGET_MAGIC = $(TEST_DIRECTORY)/elixir.mgc
-SOURCE_MAGIC = $(TEST_DIRECTORY)/elixir
+
+all: priv/apprentice test/elixir.mgc
+
+test/%.mgc: test/%
+	cd test; file -C -m ../$^
 
 priv/apprentice: src/apprentice.c
 	mkdir -p priv
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) $^ $(LDLIBS) -o $@
 
-# Test case
-
-$(TARGET_MAGIC): $(SOURCE_MAGIC)
-	cd $(TEST_DIRECTORY); $(MAGIC) -C -m elixir
-
 clean:
-	$(RM) $(PRIV) $(BEAM_FILES)
+	$(RM) $(PRIV) $(BEAM_FILES) test/*.mgc
 
 .PHONY: clean
