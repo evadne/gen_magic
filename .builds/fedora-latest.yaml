@@ -1,0 +1,22 @@
+image: fedora/latest
+packages:
+  - make
+  - gcc
+  - kernel-devel
+  - erlang
+  - elixir
+  - file-devel
+sources:
+  - https://git.sr.ht/~href/gen_magic
+tasks:
+  - setup: |
+      sudo dnf -y group install 'Development Tools'
+      mix local.hex --force
+  - build: |
+      cd gen_magic
+      mix deps.get
+      MIX_ENV=test mix compile
+  - test: |
+      cd gen_magic
+      mix test
+

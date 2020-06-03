@@ -1,0 +1,20 @@
+image: debian/testing
+packages:
+  - build-essential
+  - erlang
+  - erlang-dev
+  - elixir
+  - libmagic-dev
+sources:
+  - https://git.sr.ht/~hrefhref/gen_magic
+tasks:
+  - setup: |
+      mix local.hex --force
+  - build: |
+      cd gen_magic
+      mix deps.get
+      MIX_ENV=test mix compile
+  - test: |
+      cd gen_magic
+      mix test
+
