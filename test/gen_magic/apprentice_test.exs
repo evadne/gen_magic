@@ -104,7 +104,8 @@ defmodule GenMagic.ApprenticeTest do
           assert {:ok, _} = :erlang.binary_to_term(data)
           refute_receive _
 
-          # This path should be long enough for buffers, but larger than a valid path name. Magic will return an errno 36.
+          # This path should be long enough for buffers, but larger than a valid path name.
+          # Magic will return an errno 36.
           file = @tmp_path <> String.duplicate("a", 256)
           send(port, {self(), {:command, :erlang.term_to_binary({:file, file})}})
           assert_receive {^port, {:data, data}}
