@@ -2,6 +2,7 @@ defmodule GenMagic.ApprenticeTest do
   use GenMagic.MagicCase
 
   @tmp_path "/tmp/testgenmagicx"
+  require Logger
 
   test "sends ready" do
     port = Port.open(GenMagic.Config.get_port_name(), GenMagic.Config.get_port_options([]))
@@ -43,7 +44,7 @@ defmodule GenMagic.ApprenticeTest do
 
     test "exits with badly formatted erlang terms", %{port: port} do
       send(port, {self(), {:command, "i forgot to term_to_binary!!"}})
-      assert_receive {^port, {:exit_status, 4}}
+      assert_receive {^port, {:exit_status, 5}}
     end
 
     test "errors with wrong command", %{port: port} do
@@ -89,37 +90,42 @@ defmodule GenMagic.ApprenticeTest do
     test "works with big file path", %{port: port} do
       # Test with longest valid path.
       {dir, bigfile} = too_big(@tmp_path, "/a")
-      File.mkdir_p!(dir)
-      File.touch!(bigfile)
-      on_exit(fn -> File.rm_rf!(@tmp_path) end)
-      send(port, {self(), {:command, :erlang.term_to_binary({:file, bigfile})}})
-      assert_receive {^port, {:data, data}}
-      assert {:ok, _} = :erlang.binary_to_term(data)
-      refute_receive _
+      case File.mkdir_p(dir) do
+        :ok ->
+          File.touch!(bigfile)
+          on_exit(fn -> File.rm_rf!(@tmp_path) end)
+          send(port, {self(), {:command, :erlang.term_to_binary({:file, bigfile})}})
+          assert_receive {^port, {:data, data}}
+          assert {:ok, _} = :erlang.binary_to_term(data)
+          refute_receive _
 
-      # This path should be long enough for buffers, but larger than a valid path name. Magic will return an errno 36.
-      file = @tmp_path <> String.duplicate("a", 256)
-      send(port, {self(), {:command, :erlang.term_to_binary({:file, file})}})
-      assert_receive {^port, {:data, data}}
-      assert {:error, {36, _}} = :erlang.binary_to_term(data)
-      refute_receive _
-      # Theses filename should be too big for the path buffer.
-      file = bigfile <> "aaaaaaaaaa"
-      send(port, {self(), {:command, :erlang.term_to_binary({:file, file})}})
-      assert_receive {^port, {:data, data}}
-      assert {:error, :enametoolong} = :erlang.binary_to_term(data)
-      refute_receive _
-      # This call should be larger than the COMMAND_BUFFER_SIZE. Ensure nothing bad happens!
-      file = String.duplicate(bigfile, 4)
-      send(port, {self(), {:command, :erlang.term_to_binary({:file, file})}})
-      assert_receive {^port, {:data, data}}
-      assert {:error, :badarg} = :erlang.binary_to_term(data)
-      refute_receive _
-      # We re-run a valid call to ensure the buffer/... haven't been corrupted in port land.
-      send(port, {self(), {:command, :erlang.term_to_binary({:file, bigfile})}})
-      assert_receive {^port, {:data, data}}
-      assert {:ok, _} = :erlang.binary_to_term(data)
-      refute_receive _
+          # This path should be long enough for buffers, but larger than a valid path name. Magic will return an errno 36.
+          file = @tmp_path <> String.duplicate("a", 256)
+          send(port, {self(), {:command, :erlang.term_to_binary({:file, file})}})
+          assert_receive {^port, {:data, data}}
+          assert {:error, {36, _}} = :erlang.binary_to_term(data)
+          refute_receive _
+          # Theses filename should be too big for the path buffer.
+          file = bigfile <> "aaaaaaaaaa"
+          send(port, {self(), {:command, :erlang.term_to_binary({:file, file})}})
+          assert_receive {^port, {:data, data}}
+          assert {:error, :enametoolong} = :erlang.binary_to_term(data)
+          refute_receive _
+          # This call should be larger than the COMMAND_BUFFER_SIZE. Ensure nothing bad happens!
+          file = String.duplicate(bigfile, 4)
+          send(port, {self(), {:command, :erlang.term_to_binary({:file, file})}})
+          assert_receive {^port, {:data, data}}
+          assert {:error, :badarg} = :erlang.binary_to_term(data)
+          refute_receive _
+          # We re-run a valid call to ensure the buffer/... haven't been corrupted in port land.
+          send(port, {self(), {:command, :erlang.term_to_binary({:file, bigfile})}})
+          assert_receive {^port, {:data, data}}
+          assert {:ok, _} = :erlang.binary_to_term(data)
+          refute_receive _
+        {:error, :enametoolong} ->
+          Logger.info("Skipping test, operating system does not support max POSIX length for directories")
+          :ignore
+      end
     end
   end
 

@@ -198,6 +198,8 @@ defmodule GenMagic.Server do
         1 -> :no_database
         2 -> :no_argument
         3 -> :missing_database
+        4 -> :ei_alloc_failed
+        5 -> :ei_bad_term
         code -> {:unexpected_error, code}
       end
 

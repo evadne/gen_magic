@@ -58,8 +58,8 @@
 #define ERROR_NO_DATABASE 1
 #define ERROR_NO_ARGUMENT 2
 #define ERROR_MISSING_DATABASE 3
-#define ERROR_BAD_TERM 4
-#define ERROR_EI 5
+#define ERROR_EI 4
+#define ERROR_BAD_TERM 5
 
 // We use a bigger than possible valid command length (around 4111 bytes) to
 // allow more precise errors when using too long paths.
@@ -68,6 +68,13 @@
 
 #define MAGIC_FLAGS_COMMON (MAGIC_CHECK | MAGIC_ERROR)
 magic_t magic_setup(int flags);
+
+#define EI_ENSURE(result)                                                      \
+  do {                                                                         \
+    if (result != 0) {                                                         \
+      exit(ERROR_EI);                                                          \
+    }                                                                          \
+  } while (0);
 
 typedef char byte;
 
@@ -103,11 +110,10 @@ int main(int argc, char **argv) {
   setup_system();
 
   ei_x_buff ok_buf;
-  if (ei_x_new_with_version(&ok_buf) || ei_x_encode_atom(&ok_buf, "ready"))
-    exit(ERROR_EI);
+  EI_ENSURE(ei_x_new_with_version(&ok_buf));
+  EI_ENSURE(ei_x_encode_atom(&ok_buf, "ready"));
   write_cmd(ok_buf.buff, ok_buf.index);
-  if (ei_x_free(&ok_buf) != 0)
-    exit(ERROR_EI);
+  EI_ENSURE(ei_x_free(&ok_buf));
 
   byte buf[COMMAND_BUFFER_SIZE];
   uint16_t len;
@@ -125,9 +131,8 @@ int process_command(uint16_t len, byte *buf) {
   index = 0;
 
   // Initialize result
-  if (ei_x_new_with_version(&result) || ei_x_encode_tuple_header(&result, 2)) {
-    exit(ERROR_EI);
-  }
+  EI_ENSURE(ei_x_new_with_version(&result));
+  EI_ENSURE(ei_x_encode_tuple_header(&result, 2));
 
   if (len >= COMMAND_LEN) {
     error(&result, "badarg");
@@ -160,7 +165,7 @@ int process_command(uint16_t len, byte *buf) {
     if (termtype == ERL_BINARY_EXT) {
       if (termsize < 4096) {
         long bin_length;
-        ei_decode_binary(buf, &index, path, &bin_length);
+        EI_ENSURE(ei_decode_binary(buf, &index, path, &bin_length));
         path[termsize] = '\0';
         process_file(path, &result);
       } else {
@@ -175,11 +180,11 @@ int process_command(uint16_t len, byte *buf) {
     int termtype;
     int termsize;
     char bytes[51];
-    ei_get_type(buf, &index, &termtype, &termsize);
+    EI_ENSURE(ei_get_type(buf, &index, &termtype, &termsize));
 
     if (termtype == ERL_BINARY_EXT && termsize < 50) {
       long bin_length;
-      ei_decode_binary(buf, &index, bytes, &bin_length);
+      EI_ENSURE(ei_decode_binary(buf, &index, bytes, &bin_length));
       bytes[termsize] = '\0';
       process_bytes(bytes, termsize, &result);
     } else {
@@ -195,9 +200,7 @@ int process_command(uint16_t len, byte *buf) {
 
   write_cmd(result.buff, result.index);
 
-  if (ei_x_free(&result) != 0) {
-    exit(ERROR_EI);
-  }
+  EI_ENSURE(ei_x_free(&result));
   return 0;
 }
 
@@ -254,7 +257,6 @@ void setup_options_file(char *optarg) {
 }
 
 void setup_options_default() {
-
   struct magic_file *next = malloc(sizeof(struct magic_file));
   next->path = NULL;
   next->prev = magic_database;
@@ -314,22 +316,24 @@ void process_bytes(char *path, int size, ei_x_buff *result) {
     return;
   }
 
-  ei_x_encode_atom(result, "ok");
-  ei_x_encode_tuple_header(result, 3);
-  ei_x_encode_binary(result, mime_type_result, strlen(mime_type_result));
-  ei_x_encode_binary(result, mime_encoding_result,
-                     strlen(mime_encoding_result));
-  ei_x_encode_binary(result, type_name_result, strlen(type_name_result));
+  EI_ENSURE(ei_x_encode_atom(result, "ok"));
+  EI_ENSURE(ei_x_encode_tuple_header(result, 3));
+  EI_ENSURE(
+      ei_x_encode_binary(result, mime_type_result, strlen(mime_type_result)));
+  EI_ENSURE(ei_x_encode_binary(result, mime_encoding_result,
+                               strlen(mime_encoding_result)));
+  EI_ENSURE(
+      ei_x_encode_binary(result, type_name_result, strlen(type_name_result)));
   return;
 }
 
 void handle_magic_error(magic_t handle, int errn, ei_x_buff *result) {
   const char *error = magic_error(handle);
-  ei_x_encode_atom(result, "error");
-  ei_x_encode_tuple_header(result, 2);
+  EI_ENSURE(ei_x_encode_atom(result, "error"));
+  EI_ENSURE(ei_x_encode_tuple_header(result, 2));
   long errlon = (long)errn;
-  ei_x_encode_long(result, errlon);
-  ei_x_encode_binary(result, error, strlen(error));
+  EI_ENSURE(ei_x_encode_long(result, errlon));
+  EI_ENSURE(ei_x_encode_binary(result, error, strlen(error)));
   return;
 }
 
@@ -358,12 +362,14 @@ void process_file(char *path, ei_x_buff *result) {
     return;
   }
 
-  ei_x_encode_atom(result, "ok");
-  ei_x_encode_tuple_header(result, 3);
-  ei_x_encode_binary(result, mime_type_result, strlen(mime_type_result));
-  ei_x_encode_binary(result, mime_encoding_result,
-                     strlen(mime_encoding_result));
-  ei_x_encode_binary(result, type_name_result, strlen(type_name_result));
+  EI_ENSURE(ei_x_encode_atom(result, "ok"));
+  EI_ENSURE(ei_x_encode_tuple_header(result, 3));
+  EI_ENSURE(
+      ei_x_encode_binary(result, mime_type_result, strlen(mime_type_result)));
+  EI_ENSURE(ei_x_encode_binary(result, mime_encoding_result,
+                               strlen(mime_encoding_result)));
+  EI_ENSURE(
+      ei_x_encode_binary(result, type_name_result, strlen(type_name_result)));
   return;
 }
 
@@ -428,12 +434,10 @@ size_t write_cmd(byte *buf, size_t len) {
 }
 
 void error(ei_x_buff *result, const char *error) {
-  ei_x_encode_atom(result, "error");
-  ei_x_encode_atom(result, error);
+  EI_ENSURE(ei_x_encode_atom(result, "error"));
+  EI_ENSURE(ei_x_encode_atom(result, error));
   write_cmd(result->buff, result->index);
-
-  if (ei_x_free(result) != 0)
-    exit(ERROR_EI);
+  EI_ENSURE(ei_x_free(result));
 }
 
 void fdseek(uint16_t count) {
