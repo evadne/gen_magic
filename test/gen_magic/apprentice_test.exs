@@ -6,11 +6,13 @@ defmodule GenMagic.ApprenticeTest do
 
   test "sends ready" do
     port = Port.open(GenMagic.Config.get_port_name(), GenMagic.Config.get_port_options([]))
+    on_exit(fn() -> send(port, {self(), :close}) end)
     assert_ready(port)
   end
 
   test "stops" do
     port = Port.open(GenMagic.Config.get_port_name(), GenMagic.Config.get_port_options([]))
+    on_exit(fn() -> send(port, {self(), :close}) end)
     assert_ready(port)
     send(port, {self(), {:command, :erlang.term_to_binary({:stop, :stop})}})
     assert_receive {^port, {:exit_status, 0}}
@@ -19,6 +21,7 @@ defmodule GenMagic.ApprenticeTest do
   test "exits with no database" do
     opts = [:use_stdio, :binary, :exit_status, {:packet, 2}, {:args, []}]
     port = Port.open(GenMagic.Config.get_port_name(), opts)
+    on_exit(fn() -> send(port, {self(), :close}) end)
     assert_receive {^port, {:exit_status, 1}}
   end
 
@@ -32,12 +35,14 @@ defmodule GenMagic.ApprenticeTest do
     ]
 
     port = Port.open(GenMagic.Config.get_port_name(), opts)
+    on_exit(fn() -> send(port, {self(), :close}) end)
     assert_receive {^port, {:exit_status, 3}}
   end
 
   describe "port" do
     setup do
       port = Port.open(GenMagic.Config.get_port_name(), GenMagic.Config.get_port_options([]))
+      on_exit(fn() -> send(port, {self(), :close}) end)
       assert_ready(port)
       %{port: port}
     end

@@ -273,6 +273,16 @@ defmodule GenMagic.Server do
     {:next_state, :starting, %{data | port: nil, cycles: 0}}
   end
 
+  @doc false
+  @impl :gen_statem
+  def terminate(_, _, %{port: port}) do
+    Kernel.send(port, {self(), :close})
+  end
+
+  def terminate(_, _, _) do
+    :ok
+  end
+
   defp send(port, command) do
     Kernel.send(port, {self(), {:command, :erlang.term_to_binary(command)}})
   end
