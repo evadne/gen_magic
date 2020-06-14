@@ -6,24 +6,16 @@ CFLAGS = -std=c99 -g -Wall -Werror
 CPPFLAGS = -I$(ERL_EI_INCLUDE)
 LDFLAGS = -L$(ERL_EI_LIB)
 LDLIBS = -lpthread -lei -lm -lmagic
-BEAM_FILES = _build/
 PRIV = priv/
 RM = rm -Rf
 
-# Unit test custom magic file
-
-MAGIC = file
-
-all: priv/apprentice test/elixir.mgc
-
-test/%.mgc: test/%
-	cd test; file -C -m ../$^
+all: priv/apprentice
 
 priv/apprentice: src/apprentice.c
 	mkdir -p priv
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) $^ $(LDLIBS) -o $@
 
 clean:
-	$(RM) $(PRIV) $(BEAM_FILES) test/*.mgc
+	$(RM) $(PRIV)
 
 .PHONY: clean
