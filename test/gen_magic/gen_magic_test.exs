@@ -24,7 +24,6 @@ defmodule GenMagicTest do
   end
 
   test "Non-existent file" do
-    Process.flag(:trap_exit, true)
     {:ok, pid} = GenMagic.Server.start_link([])
     path = missing_filename()
     assert_no_file(GenMagic.Server.perform(pid, path))
@@ -41,13 +40,30 @@ defmodule GenMagicTest do
     assert "text/x-makefile" = result.mime_type
   end
 
-  test "Custom database file recognises Elixir files" do
-    database = absolute_path("test/elixir.mgc")
-    {:ok, pid} = GenMagic.Server.start_link(database_patterns: [database])
-    path = absolute_path("mix.exs")
-    assert {:ok, %Result{} = result} = GenMagic.Server.perform(pid, path)
-    assert "text/x-elixir" = result.mime_type
-    assert "us-ascii" = result.encoding
-    assert "Elixir module source text" = result.content
+  describe "custom database" do
+    setup do
+      database = absolute_path("elixir.mgc")
+      on_exit(fn -> File.rm(database) end)
+      {_, 0} = System.cmd("file", ["-C", "-m", absolute_path("test/elixir")])
+      [database: database]
+    end
+
+    test "recognises Elixir files", %{database: database} do
+      {:ok, pid} = GenMagic.Server.start_link(database_patterns: [database])
+      path = absolute_path("mix.exs")
+      assert {:ok, %Result{} = result} = GenMagic.Server.perform(pid, path)
+      assert "text/x-elixir" = result.mime_type
+      assert "us-ascii" = result.encoding
+      assert "Elixir module source text" = result.content
+    end
+
+    test "recognises Elixir files after a reload", %{database: database} do
+      {:ok, pid} = GenMagic.Server.start_link([])
+      path = absolute_path("mix.exs")
+      {:ok, %Result{mime_type: mime}} = GenMagic.Server.perform(pid, path)
+      refute mime == "text/x-elixir"
+      :ok = GenMagic.Server.reload(pid, [database])
+      assert {:ok, %Result{mime_type: "text/x-elixir"}} = GenMagic.Server.perform(pid, path)
+    end
   end
 end

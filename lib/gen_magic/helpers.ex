@@ -5,7 +5,9 @@ defmodule GenMagic.Helpers do
 
   alias GenMagic.Result
   alias GenMagic.Server
-  @spec perform_once(Path.t(), [Server.option()]) :: {:ok, Result.t()} | {:error, term()}
+
+  @spec perform_once(Path.t() | {:bytes, binary}, [Server.option()]) ::
+          {:ok, Result.t()} | {:error, term()}
 
   @doc """
   Runs a one-shot process without supervision.

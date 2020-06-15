@@ -9,6 +9,8 @@ defmodule GenMagic.Server do
   alias GenMagic.Result
   alias GenMagic.Server.Data
   alias GenMagic.Server.Status
+  import Kernel, except: [send: 2]
+  require Logger
 
   @typedoc """
   Represents the reference to the underlying server, as returned by `:gen_statem`.
@@ -47,6 +49,7 @@ defmodule GenMagic.Server do
 
         [:default, "path/to/my/magic"]
   """
+  @database_patterns [:default]
   @type option ::
           {:name, atom() | :gen_statem.server_name()}
           | {:startup_timeout, timeout()}
@@ -72,7 +75,7 @@ defmodule GenMagic.Server do
   - `:recycling`: This is the state the Server will be in, if its underlying C program needs to be
     recycled. This state is triggered whenever the cycle count reaches the defined value as per
     `:recycle_threshold`.
-    
+
     In this state, the Server is able to accept requests, but they will not be processed until the
     underlying C server program has been started again.
   """
@@ -80,7 +83,8 @@ defmodule GenMagic.Server do
 
   @spec child_spec([option()]) :: Supervisor.child_spec()
   @spec start_link([option()]) :: :gen_statem.start_ret()
-  @spec perform(t(), Path.t(), timeout()) :: {:ok, Result.t()} | {:error, term()}
+  @spec perform(t(), Path.t() | {:bytes, binary()}, timeout()) ::
+          {:ok, Result.t()} | {:error, term() | String.t()}
   @spec status(t(), timeout()) :: {:ok, Status.t()} | {:error, term()}
   @spec stop(t(), term(), timeout()) :: :ok
 
@@ -127,6 +131,20 @@ defmodule GenMagic.Server do
   end
 
   @doc """
+  Reloads a Server with a new set of databases.
+  """
+  def reload(server_ref, database_patterns \\ nil, timeout \\ 5000) do
+    :gen_statem.call(server_ref, {:reload, database_patterns}, timeout)
+  end
+
+  @doc """
+  Same as `reload/2,3` but with a full restart of the underlying C port.
+  """
+  def recycle(server_ref, database_patterns \\ nil, timeout \\ 5000) do
+    :gen_statem.call(server_ref, {:recycle, database_patterns}, timeout)
+  end
+
+  @doc """
   Returns status of the Server.
   """
   def status(server_ref, timeout \\ 5000) do
@@ -153,6 +171,7 @@ defmodule GenMagic.Server do
 
     data = %Data{
       port_name: get_port_name(),
+      database_patterns: Keyword.get(options, :database_patterns, []),
       port_options: get_port_options(options),
       startup_timeout: get_startup_timeout(options),
       process_timeout: get_process_timeout(options),
@@ -168,9 +187,14 @@ defmodule GenMagic.Server do
   end
 
   @doc false
-  def starting(:enter, _, %{request: nil, port: nil} = data) do
+  def starting(:enter, _, %{port: nil} = data) do
     port = Port.open(data.port_name, data.port_options)
     {:keep_state, %{data | port: port}, data.startup_timeout}
+  end
+
+  @doc false
+  def starting(:enter, _, data) do
+    {:keep_state_and_data, data.startup_timeout}
   end
 
   @doc false
@@ -184,8 +208,92 @@ defmodule GenMagic.Server do
   end
 
   @doc false
-  def starting(:info, {port, {:data, "ok\n"}}, %{port: port} = data) do
+  def starting(:info, {port, {:data, ready}}, %{port: port} = data) do
+    case :erlang.binary_to_term(ready) do
+      :ready -> {:next_state, :loading, data}
+    end
+  end
+
+  @doc false
+  def starting(:info, {port, {:exit_status, code}}, %{port: port} = data) do
+    error =
+      case code do
+        1 -> :bad_db
+        2 -> :ei_error
+        3 -> :ei_bad_term
+        code -> {:unexpected_error, code}
+      end
+
+    {:stop, {:error, error}, data}
+  end
+
+  @doc false
+  def loading(:enter, _old_state, data) do
+    databases =
+      Enum.flat_map(List.wrap(data.database_patterns || @database_patterns), fn
+        :default -> [:default]
+        pattern -> Path.wildcard(pattern)
+      end)
+
+    databases =
+      if databases == [] do
+        [:default]
+      else
+        databases
+      end
+
+    {:keep_state, {databases, data}, {:state_timeout, 0, :load}}
+  end
+
+  @doc false
+  def loading(:state_timeout, :load_timeout, {[database | _], data}) do
+    {:stop, {:error, {:database_loading_timeout, database}}, data}
+  end
+
+  @doc false
+  def loading(:state_timeout, :load, {[], data}) do
     {:next_state, :available, data}
+  end
+
+  @doc false
+  def loading(:state_timeout, :load, {[database | databases], data} = state) do
+    command =
+      case database do
+        :default -> {:add_default_database, nil}
+        path -> {:add_database, database}
+      end
+
+    send(data.port, command)
+    {:keep_state, state, {:state_timeout, data.startup_timeout, :load_timeout}}
+  end
+
+  @doc false
+  def loading(:info, {port, {:data, response}}, {[database | databases], %{port: port} = data}) do
+    case :erlang.binary_to_term(response) do
+      {:ok, :loaded} ->
+        {:keep_state, {databases, data}, {:state_timeout, 0, :load}}
+    end
+  end
+
+  @doc false
+  def loading(:info, {port, {:exit_status, 1}}, {[database | _], %{port: port} = data}) do
+    {:stop, {:error, {:database_not_found, database}}, data}
+  end
+
+  @doc false
+  def loading({:call, from}, :status, {[database | _], data}) do
+    handle_status_call(from, :loading, data)
+  end
+
+  @doc false
+  def loading({:call, _from}, {:perform, _path}, _data) do
+    {:keep_state_and_data, :postpone}
+  end
+
+  @doc false
+  def available(:enter, _old_state, %{request: {:reload, from, _}}) do
+    response = {:reply, from, :ok}
+    {:keep_state_and_data, response}
   end
 
   @doc false
@@ -196,8 +304,37 @@ defmodule GenMagic.Server do
   @doc false
   def available({:call, from}, {:perform, path}, data) do
     data = %{data | cycles: data.cycles + 1, request: {path, from, :erlang.now()}}
-    _ = send(data.port, {self(), {:command, "file; " <> path <> "\n"}})
+
+    arg =
+      case path do
+        path when is_binary(path) -> {:file, path}
+        {:bytes, bytes} -> {:bytes, bytes}
+      end
+
+    send(data.port, arg)
     {:next_state, :processing, data}
+  end
+
+  @doc false
+  def available({:call, from}, {:reload, databases}, data) do
+    send(data.port, {:reload, :reload})
+
+    {:next_state, :starting,
+     %{
+       data
+       | database_patterns: databases || data.database_patterns,
+         request: {:reload, from, :reload}
+     }}
+  end
+
+  @doc false
+  def available({:call, from}, {:recycle, databases}, data) do
+    {:next_state, :recycling,
+     %{
+       data
+       | database_patterns: databases || data.database_patterns,
+         request: {:reload, from, :recycle}
+     }}
   end
 
   @doc false
@@ -221,18 +358,22 @@ defmodule GenMagic.Server do
   end
 
   @doc false
-  def processing(:info, {port, {:data, response}}, %{port: port} = data) do
-    {_, from, _} = data.request
-    data = %{data | request: nil}
-    response = {:reply, from, handle_response(response)}
-    next_state = (data.cycles >= data.recycle_threshold && :recycling) || :available
-    {:next_state, next_state, data, response}
+  def processing(:state_timeout, _, %{port: port, request: {_, from, _}} = data) do
+    response = {:reply, from, {:error, :timeout}}
+    {:next_state, :recycling, %{data | request: nil}, [response, :hibernate]}
   end
 
   @doc false
-  def recycling(:enter, _, %{request: nil, port: port} = data) when is_port(port) do
-    _ = send(data.port, {self(), :close})
-    {:keep_state_and_data, data.startup_timeout}
+  def processing(:info, {port, {:data, response}}, %{port: port, request: {_, from, _}} = data) do
+    response = {:reply, from, handle_response(response)}
+    next_state = (data.cycles >= data.recycle_threshold && :recycling) || :available
+    {:next_state, next_state, %{data | request: nil}, [response, :hibernate]}
+  end
+
+  @doc false
+  def recycling(:enter, _, %{port: port} = data) when is_port(port) do
+    send(data.port, {:stop, :recycle})
+    {:keep_state_and_data, {:state_timeout, data.startup_timeout, :stop}}
   end
 
   @doc false
@@ -246,19 +387,59 @@ defmodule GenMagic.Server do
   end
 
   @doc false
+  # In case of timeout, force close.
+  def recycling(:state_timeout, :stop, data) do
+    Kernel.send(data.port, {self(), :close})
+    {:keep_state_and_data, {:state_timeout, data.startup_timeout, :close}}
+  end
+
+  @doc false
+  def recycling(:state_timeout, :close, data) do
+    {:stop, {:error, :port_close_failed}}
+  end
+
+  @doc false
   def recycling(:info, {port, :closed}, %{port: port} = data) do
     {:next_state, :starting, %{data | port: nil, cycles: 0}}
   end
 
-  defp handle_response("ok; " <> message) do
-    case message |> String.trim() |> String.split("\t") do
-      [mime_type, encoding, content] -> {:ok, Result.build(mime_type, encoding, content)}
-      _ -> {:error, :malformed_response}
-    end
+  @doc false
+  def recycling(:info, {port, {:exit_status, _}}, %{port: port} = data) do
+    {:next_state, :starting, %{data | port: nil, cycles: 0}}
   end
 
-  defp handle_response("error; " <> message) do
-    {:error, String.trim(message)}
+  @doc false
+  @impl :gen_statem
+  def terminate(_, _, %{port: port}) do
+    Kernel.send(port, {self(), :close})
+  end
+
+  @doc false
+  def terminate(_, _, _) do
+    :ok
+  end
+
+  defp send(port, command) do
+    Kernel.send(port, {self(), {:command, :erlang.term_to_binary(command)}})
+  end
+
+  @errnos %{
+    2 => :enoent,
+    13 => :eaccess,
+    20 => :enotdir,
+    12 => :enomem,
+    24 => :emfile,
+    36 => :enametoolong
+  }
+  @errno Map.keys(@errnos)
+
+  defp handle_response(data) do
+    case :erlang.binary_to_term(data) do
+      {:ok, {mime_type, encoding, content}} -> {:ok, Result.build(mime_type, encoding, content)}
+      {:error, {errno, _}} when errno in @errno -> {:error, @errnos[errno]}
+      {:error, {errno, string}} -> {:error, "#{errno}: #{string}"}
+      {:error, _} = error -> error
+    end
   end
 
   defp handle_status_call(from, state, data) do

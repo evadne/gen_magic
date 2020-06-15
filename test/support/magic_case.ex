@@ -20,8 +20,8 @@ defmodule GenMagic.MagicCase do
     |> Stream.flat_map(&Enum.shuffle/1)
   end
 
-  def assert_no_file({:error, message}) do
-    assert "unable to access file" = message
+  def assert_no_file(message) do
+    assert {:error, :enoent} = message
   end
 
   def absolute_path(path) do

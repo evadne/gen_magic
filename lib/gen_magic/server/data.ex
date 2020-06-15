@@ -21,5 +21,6 @@ defmodule GenMagic.Server.Data do
             process_timeout: :infinity,
             recycle_threshold: :infinity,
             cycles: 0,
+            database_patterns: nil,
             request: nil
 end
