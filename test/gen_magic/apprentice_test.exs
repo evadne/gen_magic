@@ -32,20 +32,6 @@ defmodule GenMagic.ApprenticeTest do
     assert_receive {^port, {:exit_status, 1}}
   end
 
-  # test "exits with a non existent database" do
-  #  opts = [
-  #    {:args, ["--database-file", "/no/such/database"]},
-  #    :use_stdio,
-  #    :binary,
-  #    :exit_status,
-  #    {:packet, 2}
-  #  ]
-  #
-  #  port = Port.open(GenMagic.Config.get_port_name(), opts)
-  #  on_exit(fn() -> send(port, {self(), :close}) end)
-  #  assert_receive {^port, {:exit_status, 3}}
-  # end
-
   describe "port" do
     setup do
       port = Port.open(GenMagic.Config.get_port_name(), GenMagic.Config.get_port_options([]))

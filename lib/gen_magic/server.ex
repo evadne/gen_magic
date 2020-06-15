@@ -214,6 +214,7 @@ defmodule GenMagic.Server do
     end
   end
 
+  @doc false
   def starting(:info, {port, {:exit_status, code}}, %{port: port} = data) do
     error =
       case code do
@@ -226,6 +227,7 @@ defmodule GenMagic.Server do
     {:stop, {:error, error}, data}
   end
 
+  @doc false
   def loading(:enter, _old_state, data) do
     databases =
       Enum.flat_map(List.wrap(data.database_patterns || @database_patterns), fn
@@ -243,14 +245,17 @@ defmodule GenMagic.Server do
     {:keep_state, {databases, data}, {:state_timeout, 0, :load}}
   end
 
+  @doc false
   def loading(:state_timeout, :load_timeout, {[database | _], data}) do
     {:stop, {:error, {:database_loading_timeout, database}}, data}
   end
 
+  @doc false
   def loading(:state_timeout, :load, {[], data}) do
     {:next_state, :available, data}
   end
 
+  @doc false
   def loading(:state_timeout, :load, {[database | databases], data} = state) do
     command =
       case database do
@@ -262,6 +267,7 @@ defmodule GenMagic.Server do
     {:keep_state, state, {:state_timeout, data.startup_timeout, :load_timeout}}
   end
 
+  @doc false
   def loading(:info, {port, {:data, response}}, {[database | databases], %{port: port} = data}) do
     case :erlang.binary_to_term(response) do
       {:ok, :loaded} ->
@@ -269,6 +275,7 @@ defmodule GenMagic.Server do
     end
   end
 
+  @doc false
   def loading(:info, {port, {:exit_status, 1}}, {[database | _], %{port: port} = data}) do
     {:stop, {:error, {:database_not_found, database}}, data}
   end
@@ -289,6 +296,7 @@ defmodule GenMagic.Server do
     {:keep_state_and_data, response}
   end
 
+  @doc false
   def available(:enter, _old_state, %{request: nil}) do
     :keep_state_and_data
   end
@@ -307,6 +315,7 @@ defmodule GenMagic.Server do
     {:next_state, :processing, data}
   end
 
+  @doc false
   def available({:call, from}, {:reload, databases}, data) do
     send(data.port, {:reload, :reload})
 
@@ -318,6 +327,7 @@ defmodule GenMagic.Server do
      }}
   end
 
+  @doc false
   def available({:call, from}, {:recycle, databases}, data) do
     {:next_state, :recycling,
      %{
@@ -376,16 +386,19 @@ defmodule GenMagic.Server do
     handle_status_call(from, :recycling, data)
   end
 
+  @doc false
   # In case of timeout, force close.
   def recycling(:state_timeout, :stop, data) do
     Kernel.send(data.port, {self(), :close})
     {:keep_state_and_data, {:state_timeout, data.startup_timeout, :close}}
   end
 
+  @doc false
   def recycling(:state_timeout, :close, data) do
     {:stop, {:error, :port_close_failed}}
   end
 
+  @doc false
   def recycling(:info, {port, :closed}, %{port: port} = data) do
     {:next_state, :starting, %{data | port: nil, cycles: 0}}
   end
@@ -401,6 +414,7 @@ defmodule GenMagic.Server do
     Kernel.send(port, {self(), :close})
   end
 
+  @doc false
   def terminate(_, _, _) do
     :ok
   end
