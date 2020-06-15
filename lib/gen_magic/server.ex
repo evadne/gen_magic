@@ -84,7 +84,7 @@ defmodule GenMagic.Server do
   @spec child_spec([option()]) :: Supervisor.child_spec()
   @spec start_link([option()]) :: :gen_statem.start_ret()
   @spec perform(t(), Path.t() | {:bytes, binary()}, timeout()) ::
-  {:ok, Result.t()} | {:error, term() | String.t()}
+          {:ok, Result.t()} | {:error, term() | String.t()}
   @spec status(t(), timeout()) :: {:ok, Status.t()} | {:error, term()}
   @spec stop(t(), term(), timeout()) :: :ok
 
@@ -227,15 +227,19 @@ defmodule GenMagic.Server do
   end
 
   def loading(:enter, _old_state, data) do
-    databases = Enum.flat_map(List.wrap(data.database_patterns || @database_patterns), fn
-      :default -> [:default]
-      pattern -> Path.wildcard(pattern)
-    end)
-    databases = if databases == [] do
-      [:default]
-    else
-      databases
-    end
+    databases =
+      Enum.flat_map(List.wrap(data.database_patterns || @database_patterns), fn
+        :default -> [:default]
+        pattern -> Path.wildcard(pattern)
+      end)
+
+    databases =
+      if databases == [] do
+        [:default]
+      else
+        databases
+      end
+
     {:keep_state, {databases, data}, {:state_timeout, 0, :load}}
   end
 
@@ -248,10 +252,12 @@ defmodule GenMagic.Server do
   end
 
   def loading(:state_timeout, :load, {[database | databases], data} = state) do
-    command = case database do
-      :default -> {:add_default_database, nil}
-      path -> {:add_database, database}
-    end
+    command =
+      case database do
+        :default -> {:add_default_database, nil}
+        path -> {:add_database, database}
+      end
+
     send(data.port, command)
     {:keep_state, state, {:state_timeout, data.startup_timeout, :load_timeout}}
   end
@@ -303,13 +309,22 @@ defmodule GenMagic.Server do
 
   def available({:call, from}, {:reload, databases}, data) do
     send(data.port, {:reload, :reload})
+
     {:next_state, :starting,
-      %{data | database_patterns: databases || data.database_patterns, request: {:reload, from, :reload}}}
+     %{
+       data
+       | database_patterns: databases || data.database_patterns,
+         request: {:reload, from, :reload}
+     }}
   end
 
   def available({:call, from}, {:recycle, databases}, data) do
     {:next_state, :recycling,
-      %{data | database_patterns: databases || data.database_patterns, request: {:reload, from, :recycle}}}
+     %{
+       data
+       | database_patterns: databases || data.database_patterns,
+         request: {:reload, from, :recycle}
+     }}
   end
 
   @doc false

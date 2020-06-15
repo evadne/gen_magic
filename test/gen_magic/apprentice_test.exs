@@ -6,13 +6,13 @@ defmodule GenMagic.ApprenticeTest do
 
   test "sends ready" do
     port = Port.open(GenMagic.Config.get_port_name(), GenMagic.Config.get_port_options([]))
-    on_exit(fn() -> send(port, {self(), :close}) end)
+    on_exit(fn -> send(port, {self(), :close}) end)
     assert_ready_and_init_default(port)
   end
 
   test "stops" do
     port = Port.open(GenMagic.Config.get_port_name(), GenMagic.Config.get_port_options([]))
-    on_exit(fn() -> send(port, {self(), :close}) end)
+    on_exit(fn -> send(port, {self(), :close}) end)
     assert_ready_and_init_default(port)
     send(port, {self(), {:command, :erlang.term_to_binary({:stop, :stop})}})
     assert_receive {^port, {:exit_status, 0}}
@@ -21,13 +21,18 @@ defmodule GenMagic.ApprenticeTest do
   test "exits with non existent database with an error" do
     opts = [:use_stdio, :binary, :exit_status, {:packet, 2}, {:args, []}]
     port = Port.open(GenMagic.Config.get_port_name(), opts)
-    on_exit(fn() -> send(port, {self(), :close}) end)
+    on_exit(fn -> send(port, {self(), :close}) end)
     assert_ready(port)
-    send(port, {self(), {:command, :erlang.term_to_binary({:add_database, "/somewhere/nowhere"})}})
+
+    send(
+      port,
+      {self(), {:command, :erlang.term_to_binary({:add_database, "/somewhere/nowhere"})}}
+    )
+
     assert_receive {^port, {:exit_status, 1}}
   end
 
-  #test "exits with a non existent database" do
+  # test "exits with a non existent database" do
   #  opts = [
   #    {:args, ["--database-file", "/no/such/database"]},
   #    :use_stdio,
@@ -39,12 +44,12 @@ defmodule GenMagic.ApprenticeTest do
   #  port = Port.open(GenMagic.Config.get_port_name(), opts)
   #  on_exit(fn() -> send(port, {self(), :close}) end)
   #  assert_receive {^port, {:exit_status, 3}}
-  #end
+  # end
 
   describe "port" do
     setup do
       port = Port.open(GenMagic.Config.get_port_name(), GenMagic.Config.get_port_options([]))
-      on_exit(fn() -> send(port, {self(), :close}) end)
+      on_exit(fn -> send(port, {self(), :close}) end)
       assert_ready_and_init_default(port)
       %{port: port}
     end
@@ -97,6 +102,7 @@ defmodule GenMagic.ApprenticeTest do
     test "works with big file path", %{port: port} do
       # Test with longest valid path.
       {dir, bigfile} = too_big(@tmp_path, "/a")
+
       case File.mkdir_p(dir) do
         :ok ->
           File.touch!(bigfile)
@@ -130,8 +136,12 @@ defmodule GenMagic.ApprenticeTest do
           assert_receive {^port, {:data, data}}
           assert {:ok, _} = :erlang.binary_to_term(data)
           refute_receive _
+
         {:error, :enametoolong} ->
-          Logger.info("Skipping test, operating system does not support max POSIX length for directories")
+          Logger.info(
+            "Skipping test, operating system does not support max POSIX length for directories"
+          )
+
           :ignore
       end
     end

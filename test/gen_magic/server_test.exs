@@ -41,5 +41,4 @@ defmodule GenMagic.ServerTest do
     assert :ok = GenMagic.Server.recycle(pid)
     assert {:ok, %{cycles: 0}} = GenMagic.Server.status(pid)
   end
-
 end

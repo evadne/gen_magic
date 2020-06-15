@@ -41,10 +41,9 @@ defmodule GenMagicTest do
   end
 
   describe "custom database" do
-
     setup do
       database = absolute_path("elixir.mgc")
-      on_exit(fn() -> File.rm(database) end)
+      on_exit(fn -> File.rm(database) end)
       {_, 0} = System.cmd("file", ["-C", "-m", absolute_path("test/elixir")])
       [database: database]
     end
@@ -66,7 +65,5 @@ defmodule GenMagicTest do
       :ok = GenMagic.Server.reload(pid, [database])
       assert {:ok, %Result{mime_type: "text/x-elixir"}} = GenMagic.Server.perform(pid, path)
     end
-
   end
-
 end
