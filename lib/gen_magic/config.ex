@@ -5,19 +5,13 @@ defmodule GenMagic.Config do
   @startup_timeout 1_000
   @process_timeout 30_000
   @recycle_threshold :infinity
-  @database_patterns [:default]
 
   def get_port_name do
     {:spawn_executable, to_charlist(get_executable_name())}
   end
 
-  def get_port_options(options) do
-    arguments = [:use_stdio, :binary, :exit_status, {:packet, 2}]
-
-    case get_executable_arguments(options) do
-      [] -> arguments
-      list -> [{:args, list} | arguments]
-    end
+  def get_port_options(_options) do
+    [:use_stdio, :binary, :exit_status, {:packet, 2}]
   end
 
   def get_startup_timeout(options) do
@@ -34,13 +28,6 @@ defmodule GenMagic.Config do
 
   defp get_executable_name do
     Path.join(:code.priv_dir(@otp_app), @executable_name)
-  end
-
-  defp get_executable_arguments(options) do
-    Enum.flat_map(List.wrap(get(options, :database_patterns, @database_patterns)), fn
-      :default -> ["--database-default"]
-      pattern -> pattern |> Path.wildcard() |> Enum.flat_map(&["--database-file", &1])
-    end)
   end
 
   defp get(options, key, default) do

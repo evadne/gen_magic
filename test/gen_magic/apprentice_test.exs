@@ -7,49 +7,51 @@ defmodule GenMagic.ApprenticeTest do
   test "sends ready" do
     port = Port.open(GenMagic.Config.get_port_name(), GenMagic.Config.get_port_options([]))
     on_exit(fn() -> send(port, {self(), :close}) end)
-    assert_ready(port)
+    assert_ready_and_init_default(port)
   end
 
   test "stops" do
     port = Port.open(GenMagic.Config.get_port_name(), GenMagic.Config.get_port_options([]))
     on_exit(fn() -> send(port, {self(), :close}) end)
-    assert_ready(port)
+    assert_ready_and_init_default(port)
     send(port, {self(), {:command, :erlang.term_to_binary({:stop, :stop})}})
     assert_receive {^port, {:exit_status, 0}}
   end
 
-  test "exits with no database" do
+  test "exits with non existent database with an error" do
     opts = [:use_stdio, :binary, :exit_status, {:packet, 2}, {:args, []}]
     port = Port.open(GenMagic.Config.get_port_name(), opts)
     on_exit(fn() -> send(port, {self(), :close}) end)
+    assert_ready(port)
+    send(port, {self(), {:command, :erlang.term_to_binary({:add_database, "/somewhere/nowhere"})}})
     assert_receive {^port, {:exit_status, 1}}
   end
 
-  test "exits with a non existent database" do
-    opts = [
-      {:args, ["--database-file", "/no/such/database"]},
-      :use_stdio,
-      :binary,
-      :exit_status,
-      {:packet, 2}
-    ]
-
-    port = Port.open(GenMagic.Config.get_port_name(), opts)
-    on_exit(fn() -> send(port, {self(), :close}) end)
-    assert_receive {^port, {:exit_status, 3}}
-  end
+  #test "exits with a non existent database" do
+  #  opts = [
+  #    {:args, ["--database-file", "/no/such/database"]},
+  #    :use_stdio,
+  #    :binary,
+  #    :exit_status,
+  #    {:packet, 2}
+  #  ]
+  #
+  #  port = Port.open(GenMagic.Config.get_port_name(), opts)
+  #  on_exit(fn() -> send(port, {self(), :close}) end)
+  #  assert_receive {^port, {:exit_status, 3}}
+  #end
 
   describe "port" do
     setup do
       port = Port.open(GenMagic.Config.get_port_name(), GenMagic.Config.get_port_options([]))
       on_exit(fn() -> send(port, {self(), :close}) end)
-      assert_ready(port)
+      assert_ready_and_init_default(port)
       %{port: port}
     end
 
     test "exits with badly formatted erlang terms", %{port: port} do
       send(port, {self(), {:command, "i forgot to term_to_binary!!"}})
-      assert_receive {^port, {:exit_status, 5}}
+      assert_receive {^port, {:exit_status, 3}}
     end
 
     test "errors with wrong command", %{port: port} do
@@ -138,6 +140,14 @@ defmodule GenMagic.ApprenticeTest do
   def assert_ready(port) do
     assert_receive {^port, {:data, data}}
     assert :ready == :erlang.binary_to_term(data)
+  end
+
+  def assert_ready_and_init_default(port) do
+    assert_receive {^port, {:data, data}}
+    assert :ready == :erlang.binary_to_term(data)
+    send(port, {self(), {:command, :erlang.term_to_binary({:add_default_database, nil})}})
+    assert_receive {^port, {:data, data}}
+    assert {:ok, _} = :erlang.binary_to_term(data)
   end
 
   def too_big(path, filename, limit \\ 4095) do

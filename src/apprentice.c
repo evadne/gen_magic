@@ -6,35 +6,35 @@
 // yum or brew. Refer to the Makefile for further reference.
 //
 // This program is designed to run interactively as a backend daemon to the
-// GenMagic library, and follows the command line pattern:
-//
-//     $ apprentice --database-file <file> --database-default
-//
-// Where each argument either refers to a compiled or uncompiled magic database,
-// or the default database. They will be loaded in the sequence that they were
-// specified. Note that you must specify at least one database.
+// GenMagic library.
 //
 // Communication is done over STDIN/STDOUT as binary packets of 2 bytes length
 // plus X bytes payload, where the payload is an erlang term encoded with
 // :erlang.term_to_binary/1 and decoded with :erlang.binary_to_term/1.
 //
-// Once the program is ready, it sends the `:ready` atom. The startup can fail
-// for multiples reasons, and the program will exit accordingly:
-// - 1: No database
-// - 2: Missing/Bad argument
-// - 3: Missing database
+// Once the program is ready, it sends the `:ready` atom.
+//
+// It is then up to the Erlang side to load databases, by sending messages:
+// - `{:add_database, path}`
+// - `{:add_default_database, _}`
+//
+// If the requested database have been loaded, an `{:ok, :loaded}` message will
+// follow. Otherwise, the process will exit (exit code 1).
 //
 // Commands are sent to the program STDIN as an erlang term of `{Operation,
 // Argument}`, and response of `{:ok | :error, Response}`.
 //
-// Invalid packets will cause the program to exit (exit code 4). This will
+// Invalid packets will cause the program to exit (exit code 3). This will
 // happen if your Erlang Term format doesn't match the version the program has
 // been compiled with, or if you send a command too huge.
 //
-// The program may exit with error codes 5 or 255 if something went wrong (such
-// as error allocating terms, or if stdin is lost).
+// The program may exit with exit code 3 if something went wrong with ei_*
+// functions.
 //
 // Commands:
+// {:reload, _} :: :ready
+// {:add_database, String.t()} :: {:ok, _} | {:error, _}
+// {:add_default_database, _} :: {:ok, _} | {:error, _}
 // {:file, path :: String.t()} :: {:ok, {type, encoding, name}} | {:error,
 // :badarg} | {:error, {errno :: integer(), String.t()}}
 // {:bytes, binary()} :: same as :file
@@ -55,11 +55,9 @@
 #include <unistd.h>
 
 #define ERROR_OK 0
-#define ERROR_NO_DATABASE 1
-#define ERROR_NO_ARGUMENT 2
-#define ERROR_MISSING_DATABASE 3
-#define ERROR_EI 4
-#define ERROR_BAD_TERM 5
+#define ERROR_DB 1
+#define ERROR_EI 2
+#define ERROR_BAD_TERM 3
 
 // We use a bigger than possible valid command length (around 4111 bytes) to
 // allow more precise errors when using too long paths.
@@ -72,6 +70,7 @@ magic_t magic_setup(int flags);
 #define EI_ENSURE(result)                                                      \
   do {                                                                         \
     if (result != 0) {                                                         \
+      fprintf(stderr, "EI ERROR, line: %d", __LINE__);                         \
       exit(ERROR_EI);                                                          \
     }                                                                          \
   } while (0);
@@ -79,10 +78,8 @@ magic_t magic_setup(int flags);
 typedef char byte;
 
 void setup_environment();
-void setup_options(int argc, char **argv);
-void setup_options_file(char *optarg);
-void setup_options_default();
-void setup_system();
+void magic_open_all();
+int magic_load_all(char *path);
 int process_command(uint16_t len, byte *buf);
 void process_file(char *path, ei_x_buff *result);
 void process_bytes(char *bytes, int size, ei_x_buff *result);
@@ -92,28 +89,14 @@ void error(ei_x_buff *result, const char *error);
 void handle_magic_error(magic_t handle, int errn, ei_x_buff *result);
 void fdseek(uint16_t count);
 
-struct magic_file {
-  struct magic_file *prev;
-  struct magic_file *next;
-  char *path;
-};
-
-static struct magic_file *magic_database;
 static magic_t magic_mime_type;     // MAGIC_MIME_TYPE
 static magic_t magic_mime_encoding; // MAGIC_MIME_ENCODING
 static magic_t magic_type_name;     // MAGIC_NONE
 
 int main(int argc, char **argv) {
-  ei_init();
+  EI_ENSURE(ei_init());
   setup_environment();
-  setup_options(argc, argv);
-  setup_system();
-
-  ei_x_buff ok_buf;
-  EI_ENSURE(ei_x_new_with_version(&ok_buf));
-  EI_ENSURE(ei_x_encode_atom(&ok_buf, "ready"));
-  write_cmd(ok_buf.buff, ok_buf.index);
-  EI_ENSURE(ei_x_free(&ok_buf));
+  magic_open_all();
 
   byte buf[COMMAND_BUFFER_SIZE];
   uint16_t len;
@@ -158,6 +141,7 @@ int process_command(uint16_t len, byte *buf) {
     return 1;
   }
 
+  // {:file, path}
   if (strlen(atom) == 4 && strncmp(atom, "file", 4) == 0) {
     char path[4097];
     ei_get_type(buf, &index, &termtype, &termsize);
@@ -176,6 +160,7 @@ int process_command(uint16_t len, byte *buf) {
       error(&result, "badarg");
       return 1;
     }
+    // {:bytes, bytes}
   } else if (strlen(atom) == 5 && strncmp(atom, "bytes", 5) == 0) {
     int termtype;
     int termsize;
@@ -191,8 +176,47 @@ int process_command(uint16_t len, byte *buf) {
       error(&result, "badarg");
       return 1;
     }
+    // {:add_database, path}
+  } else if (strlen(atom) == 12 && strncmp(atom, "add_database", 12) == 0) {
+    char path[4097];
+    ei_get_type(buf, &index, &termtype, &termsize);
+
+    if (termtype == ERL_BINARY_EXT) {
+      if (termsize < 4096) {
+        long bin_length;
+        EI_ENSURE(ei_decode_binary(buf, &index, path, &bin_length));
+        path[termsize] = '\0';
+        if (magic_load_all(path) == 0) {
+          EI_ENSURE(ei_x_encode_atom(&result, "ok"));
+          EI_ENSURE(ei_x_encode_atom(&result, "loaded"));
+        } else {
+          exit(ERROR_DB);
+        }
+      } else {
+        error(&result, "enametoolong");
+        return 1;
+      }
+    } else {
+      error(&result, "badarg");
+      return 1;
+    }
+    // {:add_default_database, _}
+  } else if (strlen(atom) == 20 &&
+             strncmp(atom, "add_default_database", 20) == 0) {
+    if (magic_load_all(NULL) == 0) {
+      EI_ENSURE(ei_x_encode_atom(&result, "ok"));
+      EI_ENSURE(ei_x_encode_atom(&result, "loaded"));
+    } else {
+      exit(ERROR_DB);
+    }
+    // {:reload, _}
+  } else if (strlen(atom) == 6 && strncmp(atom, "reload", 6) == 0) {
+    magic_open_all();
+    return 0;
+  // {:stop, _}
   } else if (strlen(atom) == 4 && strncmp(atom, "stop", 4) == 0) {
     exit(ERROR_OK);
+  // badarg
   } else {
     error(&result, "badarg");
     return 1;
@@ -206,88 +230,40 @@ int process_command(uint16_t len, byte *buf) {
 
 void setup_environment() { opterr = 0; }
 
-void setup_options(int argc, char **argv) {
-  const char *option_string = "f:";
-  static struct option long_options[] = {
-      {"database-file", required_argument, 0, 'f'},
-      {"database-default", no_argument, 0, 'd'},
-      {0, 0, 0, 0}};
-
-  int option_character;
-  while (1) {
-    int option_index = 0;
-    option_character =
-        getopt_long(argc, argv, option_string, long_options, &option_index);
-    if (-1 == option_character) {
-      break;
-    }
-    switch (option_character) {
-    case 'f': {
-      setup_options_file(optarg);
-      break;
-    }
-    case 'd': {
-      setup_options_default();
-      break;
-    }
-    case '?':
-    default: {
-      exit(ERROR_NO_ARGUMENT);
-      break;
-    }
-    }
+void magic_open_all() {
+  if (magic_mime_encoding) {
+    magic_close(magic_mime_encoding);
   }
+  if (magic_mime_type) {
+    magic_close(magic_mime_type);
+  }
+  if (magic_type_name) {
+    magic_close(magic_type_name);
+  }
+  magic_mime_encoding = magic_open(MAGIC_FLAGS_COMMON | MAGIC_MIME_ENCODING);
+  magic_mime_type = magic_open(MAGIC_FLAGS_COMMON | MAGIC_MIME_TYPE);
+  magic_type_name = magic_open(MAGIC_FLAGS_COMMON | MAGIC_NONE);
+
+  ei_x_buff ok_buf;
+  EI_ENSURE(ei_x_new_with_version(&ok_buf));
+  EI_ENSURE(ei_x_encode_atom(&ok_buf, "ready"));
+  write_cmd(ok_buf.buff, ok_buf.index);
+  EI_ENSURE(ei_x_free(&ok_buf));
 }
 
-void setup_options_file(char *optarg) {
-  if (0 != access(optarg, R_OK)) {
-    exit(ERROR_MISSING_DATABASE);
-  }
+int magic_load_all(char *path) {
+  int res;
 
-  struct magic_file *next = malloc(sizeof(struct magic_file));
-  size_t path_length = strlen(optarg) + 1;
-  char *path = malloc(path_length);
-  memcpy(path, optarg, path_length);
-  next->path = path;
-  next->prev = magic_database;
-  if (magic_database) {
-    magic_database->next = next;
+  if ((res = magic_load(magic_mime_encoding, path)) != 0) {
+    return res;
   }
-  magic_database = next;
-}
-
-void setup_options_default() {
-  struct magic_file *next = malloc(sizeof(struct magic_file));
-  next->path = NULL;
-  next->prev = magic_database;
-  if (magic_database) {
-    magic_database->next = next;
+  if ((res = magic_load(magic_mime_type, path)) != 0) {
+    return res;
   }
-  magic_database = next;
-}
-
-void setup_system() {
-  magic_mime_encoding = magic_setup(MAGIC_FLAGS_COMMON | MAGIC_MIME_ENCODING);
-  magic_mime_type = magic_setup(MAGIC_FLAGS_COMMON | MAGIC_MIME_TYPE);
-  magic_type_name = magic_setup(MAGIC_FLAGS_COMMON | MAGIC_NONE);
-}
-
-magic_t magic_setup(int flags) {
-
-  magic_t magic = magic_open(flags);
-  struct magic_file *current_database = magic_database;
-  if (!current_database) {
-    exit(ERROR_NO_DATABASE);
+  if ((res = magic_load(magic_type_name, path)) != 0) {
+    return res;
   }
-
-  while (current_database->prev) {
-    current_database = current_database->prev;
-  }
-  while (current_database) {
-    magic_load(magic, current_database->path);
-    current_database = current_database->next;
-  }
-  return magic;
+  return 0;
 }
 
 void process_bytes(char *path, int size, ei_x_buff *result) {
