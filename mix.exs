@@ -50,7 +50,7 @@ defmodule GenMagic.MixProject do
 
   defp package do
     [
-      files: ~w(lib/gen_magic/* src/*.c Makefile),
+      files: ~w(lib/gen_magic/* src/*.c Makefile mix.exs),
       licenses: ["Apache 2.0"],
       links: %{"GitHub" => "https://github.com/evadne/packmatic"},
       source_url: "https://github.com/evadne/packmatic"
