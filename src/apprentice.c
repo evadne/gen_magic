@@ -140,6 +140,7 @@ void setup_options_file(char *optarg) {
   memcpy(path, optarg, path_length);
   next->path = path;
   next->prev = magic_database;
+  next->next = NULL;
   if (magic_database) {
     magic_database->next = next;
   }
@@ -152,6 +153,7 @@ void setup_options_default() {
   struct magic_file *next = malloc(sizeof(struct magic_file));
   next->path = NULL;
   next->prev = magic_database;
+  next->next = NULL;
   if (magic_database) {
     magic_database->next = next;
   }
