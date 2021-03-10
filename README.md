@@ -18,6 +18,8 @@ end
 
 You must also have [libmagic](http://man7.org/linux/man-pages/man3/libmagic.3.html) installed locally with headers, alongside common compilation tools (i.e. build-essential). These can be acquired by apt-get, yum, brew, etc.
 
+Additionally, [pkg-config](https://www.freedesktop.org/wiki/Software/pkg-config/) is required as it is used to locate the correct version of libmagic during compilation.
+
 Compilation of the underlying C program is automatic and handled by [elixir_make](https://github.com/elixir-lang/elixir_make).
 
 ## Usage

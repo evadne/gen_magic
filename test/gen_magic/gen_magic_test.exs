@@ -42,7 +42,7 @@ defmodule GenMagicTest do
   end
 
   test "Custom database file recognises Elixir files" do
-    database = absolute_path("test/elixir.mgc")
+    database = absolute_path("test/elixir")
     {:ok, pid} = GenMagic.Server.start_link(database_patterns: [database])
     path = absolute_path("mix.exs")
     assert {:ok, %Result{} = result} = GenMagic.Server.perform(pid, path)
