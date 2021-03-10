@@ -189,6 +189,11 @@ defmodule GenMagic.Server do
   end
 
   @doc false
+  def starting(:info, {port, {:data, _}}, %{port: port} = data) do
+    :keep_state_and_data
+  end
+
+  @doc false
   def available(:enter, _old_state, %{request: nil}) do
     :keep_state_and_data
   end
