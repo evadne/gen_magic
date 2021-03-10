@@ -189,7 +189,7 @@ defmodule GenMagic.Server do
   end
 
   @doc false
-  def starting(:info, {port, {:data, _}}, %{port: port} = data) do
+  def starting(:info, {port, {:data, _}}, %{port: port}) do
     :keep_state_and_data
   end
 
