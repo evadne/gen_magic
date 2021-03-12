@@ -1,5 +1,7 @@
 # GenMagic
 
+[![Build Status](https://travis-ci.org/evadne/gen_magic.svg?branch=develop)](https://travis-ci.org/evadne/gen_magic)
+
 **GenMagic** provides supervised and customisable access to [libmagic](http://man7.org/linux/man-pages/man3/libmagic.3.html) using a supervised external process.
 
 With this library, you can start an one-off process to run a single check, or run the process as a daemon if you expect to run many checks.

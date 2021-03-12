@@ -57,7 +57,7 @@ defmodule GenMagic.Server do
   @typedoc """
   Current state of the Server:
 
-  - `:pending`: This is the initial state; the Server will attempt to start the underlying Port
+  - `:starting`: This is the initial state; the Server will attempt to start the underlying Port
     and the libmagic client, then automatically transition to either Available or Crashed.
 
   - `:available`: This is the default state. In this state the Server is able to accept requests
@@ -76,7 +76,7 @@ defmodule GenMagic.Server do
     In this state, the Server is able to accept requests, but they will not be processed until the
     underlying C server program has been started again.
   """
-  @type state :: :starting | :processing | :available | :recycling
+  @type state :: :starting | :available | :processing | :recycling
 
   @spec child_spec([option()]) :: Supervisor.child_spec()
   @spec start_link([option()]) :: :gen_statem.start_ret()
@@ -184,13 +184,11 @@ defmodule GenMagic.Server do
   end
 
   @doc false
-  def starting(:info, {port, {:data, "ok\n"}}, %{port: port} = data) do
-    {:next_state, :available, data}
-  end
-
-  @doc false
-  def starting(:info, {port, {:data, _}}, %{port: port}) do
-    :keep_state_and_data
+  def starting(:info, {port, {:data, response}}, %{port: port} = data) do
+    Enum.reduce_while(String.split(response, "\n"), :keep_state_and_data, fn
+      "ok", _ -> {:halt, {:next_state, :available, data}}
+      _, _ -> {:cont, :keep_state_and_data}
+    end)
   end
 
   @doc false
