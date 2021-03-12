@@ -9,6 +9,7 @@ defmodule GenMagic.Server do
   alias GenMagic.Result
   alias GenMagic.Server.Data
   alias GenMagic.Server.Status
+  require Logger
 
   @typedoc """
   Represents the reference to the underlying server, as returned by `:gen_statem`.
@@ -185,6 +186,8 @@ defmodule GenMagic.Server do
 
   @doc false
   def starting(:info, {port, {:data, response}}, %{port: port} = data) do
+    _ = Logger.debug(fn -> "GenMagic: #{inspect(self())} ← #{String.trim(response)}" end)
+
     Enum.reduce_while(String.split(response, "\n"), :keep_state_and_data, fn
       "ok", _ -> {:halt, {:next_state, :available, data}}
       _, _ -> {:cont, :keep_state_and_data}
@@ -199,7 +202,9 @@ defmodule GenMagic.Server do
   @doc false
   def available({:call, from}, {:perform, path}, data) do
     data = %{data | cycles: data.cycles + 1, request: {path, from, :erlang.now()}}
-    _ = send(data.port, {self(), {:command, "file; " <> path <> "\n"}})
+    command = "file; " <> path <> "\n"
+    _ = Logger.debug(fn -> "GenMagic: #{inspect(self())} → #{String.trim(command)}" end)
+    _ = send(data.port, {self(), {:command, command}})
     {:next_state, :processing, data}
   end
 
@@ -225,6 +230,7 @@ defmodule GenMagic.Server do
 
   @doc false
   def processing(:info, {port, {:data, response}}, %{port: port} = data) do
+    _ = Logger.debug(fn -> "GenMagic: #{inspect(self())} ← #{String.trim(response)}" end)
     {_, from, _} = data.request
     data = %{data | request: nil}
     response = {:reply, from, handle_response(response)}
