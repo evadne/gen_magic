@@ -13,7 +13,7 @@ The package can be installed by adding `gen_magic` to your list of dependencies 
 ```elixir
 def deps do
   [
-    {:gen_magic, "~> 1.0.3"}
+    {:gen_magic, "~> 1.0.4"}
   ]
 end
 ```
