@@ -8,7 +8,7 @@ defmodule GenMagic.MixProject do
   def project do
     [
       app: :gen_magic,
-      version: "1.0.3",
+      version: "1.0.4",
       elixir: "~> 1.7",
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
@@ -34,17 +34,16 @@ defmodule GenMagic.MixProject do
     [
       plt_add_apps: [:mix, :iex, :ex_unit],
       flags: ~w(error_handling no_opaque race_conditions underspecs unmatched_returns)a,
-      ignore_warnings: "dialyzer-ignore-warnings.exs",
       list_unused_filters: true
     ]
   end
 
   defp deps do
     [
-      {:credo, "~> 1.4.0", only: [:dev, :test], runtime: false},
-      {:dialyxir, "~> 1.0.0-rc.6", only: :dev, runtime: false},
-      {:ex_doc, ">= 0.0.0", only: :dev, runtime: false},
-      {:elixir_make, "~> 0.4", runtime: false}
+      {:credo, "~> 1.5.5", only: [:dev, :test], runtime: false},
+      {:dialyxir, "~> 1.1.0", only: :dev, runtime: false},
+      {:ex_doc, "~> 0.23.0", only: :dev, runtime: false},
+      {:elixir_make, "~> 0.6.2", runtime: false}
     ]
   end
 

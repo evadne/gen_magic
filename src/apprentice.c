@@ -23,6 +23,7 @@
 //
 //     ok; application/zip	binary	Zip archive data, at least v1.0 to extract
 
+#define _GNU_SOURCE
 #include <errno.h>
 #include <getopt.h>
 #include <libgen.h>
@@ -203,6 +204,7 @@ void process_line(char *line) {
   if (0 == strcmp(line, "exit\n")) {
     exit(ERROR_OK);
   }
+
   if (1 != sscanf(line, "file; %[^\n]s", path)) {
     print_error("invalid commmand");
     return;
@@ -247,40 +249,46 @@ void print_info(const char *format, ...) {
     return;
   }
 
-  printf(ANSI_INFO "info; " ANSI_RESET);
+  char *message = NULL;
   va_list arguments;
   va_start(arguments, format);
-  vprintf(format, arguments);
+  vasprintf(&message, format, arguments);
   va_end(arguments);
-  printf("\n");
+  fprintf(stdout, ANSI_INFO "info; " ANSI_RESET "%s\n", message);
+  free(message);
+  fflush(stdout);
 }
 
 void print_ok(const char *format, ...) {
-  if (isatty(STDOUT_FILENO)) {
-    printf(ANSI_OK "ok; " ANSI_RESET);
-  } else {
-    printf("ok; ");
-  }
-
+  char *message = NULL;
   va_list arguments;
   va_start(arguments, format);
-  vprintf(format, arguments);
+  vasprintf(&message, format, arguments);
   va_end(arguments);
-  printf("\n");
+
+  if (isatty(STDOUT_FILENO)) {
+    fprintf(stdout, ANSI_OK "ok; " ANSI_RESET "%s\n", message);
+  } else {
+    fprintf(stdout, "ok; %s\n", message);
+  }
+
+  free(message);
   fflush(stdout);
 }
 
 void print_error(const char *format, ...) {
-  if (isatty(STDERR_FILENO)) {
-    fprintf(stderr, ANSI_ERROR "error; " ANSI_RESET);
-  } else {
-    fprintf(stderr, "error; ");
-  }
-
+  char *message = NULL;
   va_list arguments;
   va_start(arguments, format);
-  vfprintf(stderr, format, arguments);
+  vasprintf(&message, format, arguments);
   va_end(arguments);
-  fprintf(stderr, "\n");
+
+  if (isatty(STDERR_FILENO)) {
+    fprintf(stderr, ANSI_ERROR "error; " ANSI_RESET "%s\n", message);
+  } else {
+    fprintf(stderr, "error; %s\n", message);
+  }
+
+  free(message);
   fflush(stderr);
 }

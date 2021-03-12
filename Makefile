@@ -1,8 +1,8 @@
 # Apprentice binary
 
 CC = gcc
-CFLAGS = -std=c99 -g -Wall -Wextra -Werror `pkg-config --cflags libmagic`
-LDFLAGS = -lm `pkg-config --libs libmagic`
+CFLAGS = -std=c99 -g -Wall -Wextra -Werror
+LDFLAGS = -lm `pkg-config --libs libmagic 2>/dev/null || echo "-lmagic"`
 HEADER_FILES = src
 C_SOURCE_FILES = src/apprentice.c
 OBJECT_FILES = $(C_SOURCE_FILES:.c=.o)

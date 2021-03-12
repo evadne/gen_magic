@@ -9,6 +9,7 @@ defmodule GenMagic.Server do
   alias GenMagic.Result
   alias GenMagic.Server.Data
   alias GenMagic.Server.Status
+  require Logger
 
   @typedoc """
   Represents the reference to the underlying server, as returned by `:gen_statem`.
@@ -57,7 +58,7 @@ defmodule GenMagic.Server do
   @typedoc """
   Current state of the Server:
 
-  - `:pending`: This is the initial state; the Server will attempt to start the underlying Port
+  - `:starting`: This is the initial state; the Server will attempt to start the underlying Port
     and the libmagic client, then automatically transition to either Available or Crashed.
 
   - `:available`: This is the default state. In this state the Server is able to accept requests
@@ -76,7 +77,7 @@ defmodule GenMagic.Server do
     In this state, the Server is able to accept requests, but they will not be processed until the
     underlying C server program has been started again.
   """
-  @type state :: :starting | :processing | :available | :recycling
+  @type state :: :starting | :available | :processing | :recycling
 
   @spec child_spec([option()]) :: Supervisor.child_spec()
   @spec start_link([option()]) :: :gen_statem.start_ret()
@@ -184,13 +185,13 @@ defmodule GenMagic.Server do
   end
 
   @doc false
-  def starting(:info, {port, {:data, "ok\n"}}, %{port: port} = data) do
-    {:next_state, :available, data}
-  end
+  def starting(:info, {port, {:data, response}}, %{port: port} = data) do
+    _ = Logger.debug(fn -> "GenMagic: #{inspect(self())} ← #{String.trim(response)}" end)
 
-  @doc false
-  def starting(:info, {port, {:data, _}}, %{port: port}) do
-    :keep_state_and_data
+    Enum.reduce_while(String.split(response, "\n"), :keep_state_and_data, fn
+      "ok", _ -> {:halt, {:next_state, :available, data}}
+      _, _ -> {:cont, :keep_state_and_data}
+    end)
   end
 
   @doc false
@@ -201,7 +202,9 @@ defmodule GenMagic.Server do
   @doc false
   def available({:call, from}, {:perform, path}, data) do
     data = %{data | cycles: data.cycles + 1, request: {path, from, :erlang.now()}}
-    _ = send(data.port, {self(), {:command, "file; " <> path <> "\n"}})
+    command = "file; " <> path <> "\n"
+    _ = Logger.debug(fn -> "GenMagic: #{inspect(self())} → #{String.trim(command)}" end)
+    _ = send(data.port, {self(), {:command, command}})
     {:next_state, :processing, data}
   end
 
@@ -227,6 +230,7 @@ defmodule GenMagic.Server do
 
   @doc false
   def processing(:info, {port, {:data, response}}, %{port: port} = data) do
+    _ = Logger.debug(fn -> "GenMagic: #{inspect(self())} ← #{String.trim(response)}" end)
     {_, from, _} = data.request
     data = %{data | request: nil}
     response = {:reply, from, handle_response(response)}
