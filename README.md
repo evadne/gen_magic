@@ -20,6 +20,12 @@ end
 
 You must also have [libmagic](http://man7.org/linux/man-pages/man3/libmagic.3.html) installed locally with headers, alongside common compilation tools (i.e. build-essential). These can be acquired by apt-get, yum, brew, etc.
 
+-  On Debian Linux, install [libmagic-dev](https://packages.debian.org/sid/libmagic-dev) to get the headers.
+
+-  On Alpine Linux, install [file-dev](https://pkgs.alpinelinux.org/package/edge/main/x86_64/file-dev) to get the headers.
+
+-  On macOS, install [libmagic](https://formulae.brew.sh/formula/libmagic) via Homebrew to get everything.
+
 Additionally, [pkg-config](https://www.freedesktop.org/wiki/Software/pkg-config/) is required as it is used to locate the correct version of libmagic during compilation.
 
 Compilation of the underlying C program is automatic and handled by [elixir_make](https://github.com/elixir-lang/elixir_make).
@@ -123,6 +129,10 @@ Run an endless cycle to prove that the program is resilient:
 find /usr/share/ -name *png | xargs mix run test/soak.exs
 find . -name *ex | xargs mix run test/soak.exs
 ```
+
+### Alpine Linux Test
+
+    docker run --rm -it $(docker build -q -f ./infra/docker-app-test-alpine/Dockerfile .) mix test
 
 ## Acknowledgements
 

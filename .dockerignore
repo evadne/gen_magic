@@ -1,0 +1,5 @@
+*/.DS_Store
+*/*.o
+.git/*
+.tm_properties
+_build
