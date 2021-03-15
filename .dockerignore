@@ -1,5 +1,6 @@
 */.DS_Store
 */*.o
+*/*.dSYM
 .git/*
 .tm_properties
 _build

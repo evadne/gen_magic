@@ -8,5 +8,6 @@ erl_crash.dump
 *.beam
 /config/*.secret.exs
 /priv/apprentice
+/priv/apprentice.dSYM
 /src/*.o
 /test/*.mgc
