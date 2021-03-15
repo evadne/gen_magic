@@ -13,12 +13,18 @@ The package can be installed by adding `gen_magic` to your list of dependencies 
 ```elixir
 def deps do
   [
-    {:gen_magic, "~> 1.0.4"}
+    {:gen_magic, "~> 1.0.5"}
   ]
 end
 ```
 
 You must also have [libmagic](http://man7.org/linux/man-pages/man3/libmagic.3.html) installed locally with headers, alongside common compilation tools (i.e. build-essential). These can be acquired by apt-get, yum, brew, etc.
+
+-  On Debian Linux, install [libmagic-dev](https://packages.debian.org/sid/libmagic-dev) to get the headers.
+
+-  On Alpine Linux, install [file-dev](https://pkgs.alpinelinux.org/package/edge/main/x86_64/file-dev) to get the headers.
+
+-  On macOS, install [libmagic](https://formulae.brew.sh/formula/libmagic) via Homebrew to get everything.
 
 Additionally, [pkg-config](https://www.freedesktop.org/wiki/Software/pkg-config/) is required as it is used to locate the correct version of libmagic during compilation.
 
@@ -124,11 +130,30 @@ find /usr/share/ -name *png | xargs mix run test/soak.exs
 find . -name *ex | xargs mix run test/soak.exs
 ```
 
+### Debian Linux Test
+
+The Debian Linux image is based on the [official Elixir image](https://github.com/c0b/docker-elixir).
+
+    docker run --rm -it $(docker build -q -f ./infra/docker-app-test/Dockerfile .) mix test
+
+### Alpine Linux Test
+
+The Alpine Linux image is based on [Bitwalker’s Elixir on Alpine Linux image](https://github.com/bitwalker/alpine-elixir).
+
+    docker run --rm -it $(docker build -q -f ./infra/docker-app-test-alpine/Dockerfile .) mix test
+
 ## Acknowledgements
 
 During design and prototype development of this library, the Author has drawn inspiration from the following individuals, and therefore thanks all contributors for their generosity:
 
-- Mr [James Every](https://github.com/devstopfix)
+- [devstopfix](https://github.com/devstopfix)
   - Enhanced Elixir Wrapper (based on GenServer)
   - Initial Hex packaging (v.0.22)
-  - Soak Testing
+  - Soak testing
+
+- [hrefhref](https://github.com/hrefhref)
+  - Valgrind rework
+  - Alpine Linux testing
+
+- [Kleidukos](https://github.com/Kleidukos)
+  - Makefile rework
