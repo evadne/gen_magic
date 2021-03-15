@@ -36,7 +36,7 @@ defmodule GenMagic.ServerTest do
 
   defp assert_cycles(pid, count, retries) do
     {:ok, status} = GenMagic.Server.status(pid)
-    
+
     case status do
       %{cycles: ^count} -> :ok
       %{cycles: _} -> assert_cycles(pid, count, retries - 1)
