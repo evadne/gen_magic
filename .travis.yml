@@ -1,20 +1,49 @@
-language: elixir
+language: shell
+
+services:
+  - docker
+
+stages:
+  - Native
+  - Docker
 
 os:
   - linux
 
 dist:
-  - xenial
-  - bionic
   - focal
 
-elixir:
-  - 1.11.3
-  - 1.10.4
-
-otp_release:
-  - 23.1.2
-  - 22.3.4
-
 before_install:
-  - sudo apt-get install -y build-essential libmagic-dev
+  - |
+    if [ "$TRAVIS_BUILD_STAGE_NAME" = "Native" ]; then
+      sudo apt-get install -y build-essential libmagic-dev
+    fi
+
+jobs:
+  include:
+    - stage: Native
+      language: elixir
+      elixir: 1.11.3
+      otp_release: 23.1.2
+      script: mix test
+    - stage: Native
+      language: elixir
+      elixir: 1.11.3
+      otp_release: 22.3.4
+      script: mix test
+    - stage: Native
+      language: elixir
+      elixir: 1.10.4
+      otp_release: 23.1.2
+      script: mix test
+    - stage: Native
+      language: elixir
+      elixir: 1.10.4
+      otp_release: 22.3.4
+      script: mix test
+    - stage: Docker
+      name: Alpine Linux
+      script: docker run --rm -it $(docker build -q -f ./infra/docker-app-test-alpine/Dockerfile .) mix test
+    - stage: Docker
+      name: Debian Linux
+      script: docker run --rm -it $(docker build -q -f ./infra/docker-app-test/Dockerfile .) mix test
