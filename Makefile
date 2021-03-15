@@ -1,24 +1,14 @@
-# Apprentice binary
-
 CC = gcc
 CFLAGS = -std=c99 -g -Wall -Wextra -Werror
-LDFLAGS = -lm `pkg-config --libs libmagic 2>/dev/null || echo "-lmagic"`
-HEADER_FILES = src
-C_SOURCE_FILES = src/apprentice.c
-OBJECT_FILES = $(C_SOURCE_FILES:.c=.o)
-EXECUTABLE_DIRECTORY = priv
-EXECUTABLE = $(EXECUTABLE_DIRECTORY)/apprentice
+LDLIBS = -lm `pkg-config --libs libmagic 2>/dev/null || echo "-lmagic"`
+PRIV = priv/
+RM = rm -Rf
 
-all: $(EXECUTABLE)
-
-$(EXECUTABLE): $(OBJECT_FILES) $(EXECUTABLE_DIRECTORY)
-	$(CC) $(OBJECT_FILES) -o $@ $(LDFLAGS)
-
-$(EXECUTABLE_DIRECTORY):
-	mkdir -p $(EXECUTABLE_DIRECTORY)
-
-.o:
-	$(CC) $(CFLAGS) $< -o $@
+priv/apprentice: src/apprentice.c
+	mkdir -p priv
+	$(CC) $(CFLAGS) $(CPPFLAGS) $^ $(LDFLAGS) $(LDLIBS) -o $@
 
 clean:
-	rm -f $(EXECUTABLE) $(OBJECT_FILES) $(BEAM_FILES)
+	$(RM) priv/apprentice
+
+.PHONY: clean

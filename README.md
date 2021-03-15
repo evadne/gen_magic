@@ -130,7 +130,15 @@ find /usr/share/ -name *png | xargs mix run test/soak.exs
 find . -name *ex | xargs mix run test/soak.exs
 ```
 
+### Debian Linux Test
+
+The Debian Linux image is based on the [official Elixir image](https://github.com/c0b/docker-elixir).
+
+    docker run --rm -it $(docker build -q -f ./infra/docker-app-test/Dockerfile .) mix test
+
 ### Alpine Linux Test
+
+The Alpine Linux image is based on [Bitwalker’s Elixir on Alpine Linux image](https://github.com/bitwalker/alpine-elixir).
 
     docker run --rm -it $(docker build -q -f ./infra/docker-app-test-alpine/Dockerfile .) mix test
 
