@@ -13,7 +13,7 @@ The package can be installed by adding `gen_magic` to your list of dependencies 
 ```elixir
 def deps do
   [
-    {:gen_magic, "~> 1.0.4"}
+    {:gen_magic, "~> 1.0.5"}
   ]
 end
 ```
@@ -146,7 +146,14 @@ The Alpine Linux image is based on [Bitwalker’s Elixir on Alpine Linux image](
 
 During design and prototype development of this library, the Author has drawn inspiration from the following individuals, and therefore thanks all contributors for their generosity:
 
-- Mr [James Every](https://github.com/devstopfix)
+- [devstopfix](https://github.com/devstopfix)
   - Enhanced Elixir Wrapper (based on GenServer)
   - Initial Hex packaging (v.0.22)
-  - Soak Testing
+  - Soak testing
+
+- [hrefhref](https://github.com/hrefhref)
+  - Valgrind rework
+  - Alpine Linux testing
+
+- [Kleidukos](https://github.com/Kleidukos)
+  - Makefile rework
