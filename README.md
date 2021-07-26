@@ -127,8 +127,8 @@ For concurrency *and* resiliency, you can use GenMagic in a pool.
 
 You can add a pool in your application supervisor by adding it as a child:
 
-elixir
-```
+
+```elixir
 children = [
   {GenMagic.Pool.NimblePool, pool_name: MyApp.GenMagicPool, pool_size: 2}
 ]
@@ -139,8 +139,8 @@ Supervisor.start_link(children, opts)
 
 And then you can use it with `c:GenMagic.Pool.perform/3`:
 
-elixir
-```
+
+```elixir
 iex(1)> GenMagic.Pool.NimblePool.perform(MyApp.GenMagicPool, Path.expand("~/.bash_history"), [])
 {:ok, …}
 ```
@@ -173,13 +173,17 @@ find . -name *ex | xargs mix run test/soak.exs
 
 The Debian Linux image is based on the [official Elixir image](https://github.com/c0b/docker-elixir).
 
-    docker run --rm -it $(docker build -q -f ./infra/docker-app-test/Dockerfile .) mix test
+```bash
+docker run --rm -it $(docker build -q -f ./infra/docker-app-test/Dockerfile .) mix test
+```
 
 ### Alpine Linux Test
 
 The Alpine Linux image is based on [Bitwalker’s Elixir on Alpine Linux image](https://github.com/bitwalker/alpine-elixir).
 
-    docker run --rm -it $(docker build -q -f ./infra/docker-app-test-alpine/Dockerfile .) mix test
+```bash
+docker run --rm -it $(docker build -q -f ./infra/docker-app-test-alpine/Dockerfile .) mix test
+```
 
 ## Acknowledgements
 
