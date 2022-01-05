@@ -206,7 +206,7 @@ void process_line(char *line) {
   }
 
   if (1 != sscanf(line, "file; %[^\n]s", path)) {
-    print_error("invalid commmand");
+    print_error("invalid command");
     return;
   }
 
