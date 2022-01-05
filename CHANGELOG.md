@@ -36,7 +36,7 @@ The format is based on [Keep a Changelog][1], and this project adheres to [Seman
 ### Added
 
 - Initial Elixir wrapper with Erlexec (evadne)
-- Intiial C program (evadne)
+- Initial C program (evadne)
 
 [unreleased]: https://github.com/evadne/gen_magic/compare/develop
 [0.20.83]: https://github.com/devstopfix/gen_magic/commit/7e27fd094cb462d26ba54fde0205a5be313d12da
