@@ -40,11 +40,11 @@ defmodule GenMagic.MixProject do
 
   defp deps do
     [
-      {:credo, "~> 1.5.5", only: [:dev, :test], runtime: false},
-      {:dialyxir, "~> 1.1.0", only: :dev, runtime: false},
-      {:ex_doc, "~> 0.23.0", only: :dev, runtime: false},
-      {:elixir_make, "~> 0.6.2", runtime: false},
-      {:nimble_pool, "~> 0.2.4", only: [:dev, :test]},
+      {:credo, "~> 1.6.7", only: [:dev, :test], runtime: false},
+      {:dialyxir, "~> 1.2.0", only: :dev, runtime: false},
+      {:ex_doc, "~> 0.29.1", only: :dev, runtime: false},
+      {:elixir_make, "~> 0.7.5", runtime: false},
+      {:nimble_pool, "~> 0.2.6", only: [:dev, :test]},
       {:poolboy, "~> 1.5.2", only: [:dev, :test]}
     ]
   end
