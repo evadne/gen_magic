@@ -8,8 +8,8 @@ defmodule GenMagic.MixProject do
   def project do
     [
       app: :gen_magic,
-      version: "1.0.5",
-      elixir: "~> 1.7",
+      version: "1.1.0",
+      elixir: "~> 1.14",
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
       compilers: [:elixir_make] ++ Mix.compilers(),
