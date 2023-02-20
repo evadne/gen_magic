@@ -201,7 +201,7 @@ defmodule GenMagic.Server do
 
   @doc false
   def available({:call, from}, {:perform, path}, data) do
-    data = %{data | cycles: data.cycles + 1, request: {path, from, :erlang.now()}}
+    data = %{data | cycles: data.cycles + 1, request: {path, from, :os.timestamp()}}
     command = "file; " <> path <> "\n"
     _ = Logger.debug(fn -> "GenMagic: #{inspect(self())} → #{String.trim(command)}" end)
     _ = send(data.port, {self(), {:command, command}})
