@@ -53,8 +53,8 @@ defmodule GenMagic.MixProject do
     [
       files: ~w(lib/gen_magic/* src/*.c Makefile mix.exs),
       licenses: ["Apache 2.0"],
-      links: %{"GitHub" => "https://github.com/evadne/packmatic"},
-      source_url: "https://github.com/evadne/packmatic"
+      links: %{"GitHub" => "https://github.com/evadne/gen_magic"},
+      source_url: "https://github.com/evadne/gen_magic"
     ]
   end
 
