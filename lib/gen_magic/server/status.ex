@@ -4,7 +4,7 @@ defmodule GenMagic.Server.Status do
   """
 
   @typedoc """
-  Represnets Staus of the Server.
+  Represents Status of the Server.
 
   - `:state`: Represents the current state of the Server
 
