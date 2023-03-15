@@ -1,4 +1,3 @@
-CC = gcc
 CFLAGS = -std=c99 -g -Wall -Wextra -Werror
 LDLIBS = -lm `pkg-config --cflags --libs libmagic 2>/dev/null || echo "-lmagic"`
 PRIV = priv/
