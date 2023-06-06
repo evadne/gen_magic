@@ -8,7 +8,7 @@ defmodule GenMagic.MixProject do
   def project do
     [
       app: :gen_magic,
-      version: "1.1.0",
+      version: "1.1.1",
       elixir: "~> 1.7",
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
@@ -43,7 +43,7 @@ defmodule GenMagic.MixProject do
       {:credo, "~> 1.5.5", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.1.0", only: :dev, runtime: false},
       {:ex_doc, "~> 0.23.0", only: :dev, runtime: false},
-      {:elixir_make, "~> 0.6.2", runtime: false},
+      {:elixir_make, "~> 0.7.7", runtime: false},
       {:nimble_pool, "~> 0.2.4", only: [:dev, :test]},
       {:poolboy, "~> 1.5.2", only: [:dev, :test]}
     ]
