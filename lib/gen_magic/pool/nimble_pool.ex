@@ -4,6 +4,11 @@ if Code.ensure_loaded?(NimblePool) do
     @behaviour GenMagic.Pool
     @behaviour NimblePool
 
+    def child_spec(options) do
+      {pool_size, pool_options} = Keyword.pop(options, :pool_size, System.schedulers_online())
+      NimblePool.child_spec(worker: {__MODULE__, pool_options}, pool_size: pool_size)
+    end
+
     @impl GenMagic.Pool
     def start_link(options) do
       {pool_size, pool_options} = Keyword.pop(options, :pool_size, System.schedulers_online())

@@ -3,6 +3,13 @@ defmodule GenMagic.Pool.PoolboyTest do
   alias GenMagic.Pool.Poolboy, as: Pool
 
   describe "Poolboy" do
+    test "can be started as part of a Supervisor" do
+      children = [{Pool, pool_name: TestPool}]
+      options = [strategy: :one_for_one, name: __MODULE__.Supervisor]
+      Supervisor.start_link(children, options)
+      assert_file(TestPool)
+    end
+
     test "can be addressed by name if started by name" do
       {:ok, _} = Pool.start_link(pool_name: TestPool)
       assert_file(TestPool)
