@@ -1,7 +1,7 @@
 defmodule GenMagic.MixProject do
   use Mix.Project
 
-  if :erlang.system_info(:otp_release) < '21' do
+  if :erlang.system_info(:otp_release) < ~c"21" do
     raise "GenMagic requires Erlang/OTP 21 or newer"
   end
 
