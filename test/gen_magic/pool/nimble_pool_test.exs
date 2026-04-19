@@ -3,6 +3,13 @@ defmodule GenMagic.Pool.NimblePoolTest do
   alias GenMagic.Pool.NimblePool, as: Pool
 
   describe "NimblePool" do
+    test "can be started as part of a Supervisor" do
+      children = [{Pool, pool_name: TestPool}]
+      options = [strategy: :one_for_one, name: __MODULE__.Supervisor]
+      Supervisor.start_link(children, options)
+      assert_file(TestPool)
+    end
+
     test "can be addressed by pid or name if started by name" do
       {:ok, pid} = Pool.start_link(pool_name: TestPool)
       assert_file(TestPool)
