@@ -2,7 +2,7 @@ defmodule Soak do
   @moduledoc """
   Run with a list of files to inspect:
 
-      find /usr/share/ -name *png | xargs mix run test/soak.exs
+      find /usr/share/ -name *png | xargs mix run scripts/soak.exs
   """
 
   def perform_infinite([]), do: false
@@ -26,7 +26,7 @@ end
 
 # Run with a list of files to inspect
 #
-#  find /usr/share/ -name *png | xargs mix run test/soak.exs
+#  find /usr/share/ -name *png | xargs mix run scripts/soak.exs
 
 System.argv()
 |> Enum.filter(&File.exists?/1)

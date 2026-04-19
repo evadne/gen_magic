@@ -24,10 +24,7 @@ if Code.ensure_loaded?(:poolboy) do
     def init(options) do
       {pool_name, options} = Keyword.pop!(options, :pool_name)
       {pool_size, options} = Keyword.pop(options, :pool_size, System.schedulers_online())
-      pool_config = [worker_module: Worker, size: pool_size]
-
-      pool_config =
-        (pool_name && put_in(pool_config, [:name], {:local, pool_name})) || pool_config
+      pool_config = [worker_module: Worker, size: pool_size, name: {:local, pool_name}]
 
       children = [:poolboy.child_spec(__MODULE__, pool_config, options)]
       Supervisor.init(children, strategy: :one_for_one, max_restarts: 60, max_seconds: 60)

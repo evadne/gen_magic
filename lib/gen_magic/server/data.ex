@@ -1,7 +1,7 @@
 defmodule GenMagic.Server.Data do
   @moduledoc false
 
-  @type request :: {Path.t(), {pid(), term()}, requested_at :: integer()}
+  @type request :: {Path.t(), {pid(), term()}}
 
   @type t :: %__MODULE__{
           port_name: Port.name(),

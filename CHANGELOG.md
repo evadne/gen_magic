@@ -9,7 +9,11 @@ The format is based on [Keep a Changelog][1], and this project adheres to [Seman
 
 ## Unreleased
 
-None
+### Changed
+
+- Updated the local toolchain pins to Erlang/OTP 28 and Elixir 1.19
+- Refreshed development dependencies so the project compiles on current Elixir/OTP releases
+- Removed deprecated `:os.timestamp/0` usage from the server state machine
 
 ## 1.1.1
 

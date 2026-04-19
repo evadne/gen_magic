@@ -24,11 +24,13 @@ You must also have [libmagic](http://man7.org/linux/man-pages/man3/libmagic.3.ht
 
 -  On Alpine Linux, install [file-dev](https://pkgs.alpinelinux.org/package/edge/main/x86_64/file-dev) to get the headers.
 
--  On macOS, install [libmagic](https://formulae.brew.sh/formula/libmagic) via Homebrew to get everything.
+-  On macOS, install [libmagic](https://formulae.brew.sh/formula/libmagic) and `pkgconf` via Homebrew.
 
 Additionally, [pkg-config](https://www.freedesktop.org/wiki/Software/pkg-config/) is required as it is used to locate the correct version of libmagic during compilation.
 
 Compilation of the underlying C program is automatic and handled by [elixir_make](https://github.com/elixir-lang/elixir_make).
+
+The library is currently exercised on Erlang/OTP 28 and Elixir 1.19.
 
 ## Usage
 
@@ -165,8 +167,8 @@ Obviously, it will be more ideal if you have wrapped `GenMagic.Server` in a pool
 Run an endless cycle to prove that the program is resilient:
 
 ```bash
-find /usr/share/ -name *png | xargs mix run test/soak.exs
-find . -name *ex | xargs mix run test/soak.exs
+find /usr/share/ -name *png | xargs mix run scripts/soak.exs
+find . -name *ex | xargs mix run scripts/soak.exs
 ```
 
 ### Debian Linux Test

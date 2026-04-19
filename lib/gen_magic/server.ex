@@ -201,7 +201,7 @@ defmodule GenMagic.Server do
 
   @doc false
   def available({:call, from}, {:perform, path}, data) do
-    data = %{data | cycles: data.cycles + 1, request: {path, from, :os.timestamp()}}
+    data = %{data | cycles: data.cycles + 1, request: {path, from}}
     command = "file; " <> path <> "\n"
     _ = Logger.debug(fn -> "GenMagic: #{inspect(self())} → #{String.trim(command)}" end)
     _ = send(data.port, {self(), {:command, command}})
@@ -214,7 +214,7 @@ defmodule GenMagic.Server do
   end
 
   @doc false
-  def processing(:enter, _old_state, %{request: {_path, _from, _time}} = data) do
+  def processing(:enter, _old_state, %{request: {_path, _from}} = data) do
     {:keep_state_and_data, data.process_timeout}
   end
 
@@ -231,7 +231,7 @@ defmodule GenMagic.Server do
   @doc false
   def processing(:info, {port, {:data, response}}, %{port: port} = data) do
     _ = Logger.debug(fn -> "GenMagic: #{inspect(self())} ← #{String.trim(response)}" end)
-    {_, from, _} = data.request
+    {_, from} = data.request
     data = %{data | request: nil}
     response = {:reply, from, handle_response(response)}
     next_state = (data.cycles >= data.recycle_threshold && :recycling) || :available
