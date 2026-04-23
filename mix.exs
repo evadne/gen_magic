@@ -1,7 +1,7 @@
 defmodule GenMagic.MixProject do
   use Mix.Project
 
-  if :erlang.system_info(:otp_release) < '21' do
+  if :erlang.system_info(:otp_release) < ~c"21" do
     raise "GenMagic requires Erlang/OTP 21 or newer"
   end
 
@@ -43,7 +43,7 @@ defmodule GenMagic.MixProject do
       {:credo, "~> 1.5.5", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.1.0", only: :dev, runtime: false},
       {:ex_doc, "~> 0.23.0", only: :dev, runtime: false},
-      {:elixir_make, "~> 0.7.7", runtime: false},
+      {:elixir_make, "~> 0.9.0", runtime: false},
       {:nimble_pool, "~> 0.2.4", only: [:dev, :test]},
       {:poolboy, "~> 1.5.2", only: [:dev, :test]}
     ]
